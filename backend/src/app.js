@@ -11,18 +11,16 @@ import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import requestLogger from './middleware/requestLogger.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
+import predictionRoutes from './modules/prediction/prediction.routes.js';
 
-// Initialize express app
 const app = express();
 
-// Connect to MongoDB
 connectDB();
 
-// Security Middleware
-app.use(helmet()); // Set security headers
-app.use(mongoSanitize()); // Prevent NoSQL injection
+app.use(helmet()); 
+app.use(mongoSanitize()); 
 
-// CORS Configuration
+
 const corsOptions = { 
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
@@ -30,21 +28,18 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Body parser & cookie parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Logging middleware - Use custom request logger
 app.use(requestLogger);
 
-// Morgan HTTP logger (streams to Winston)
 app.use(morgan('combined', { stream: logger.stream }));
 
-// Rate limiting
+
 app.use('/api', apiLimiter);
 
-// Health check route
+
 app.get('/health', (req, res) => {
   logger.debug('Health check endpoint accessed');
   res.status(200).json({
@@ -57,8 +52,9 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/predictions', predictionRoutes);
 
-// Welcome route
+
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -69,10 +65,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 Handler
 app.use(notFound);
 
-// Global Error Handler
 app.use(errorHandler);
 
 // Server configuration
@@ -81,17 +75,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const server = app.listen(PORT, () => {
   console.log(`
-╔════════════════════════════════════════════════════════════════╗
-║                                                                ║
-║        ❤️  CardioShield AI - Backend Server Started  ❤️        ║
-║                                                                ║
-║  Environment: ${NODE_ENV.padEnd(47)} ║
-║  Port:        ${PORT.toString().padEnd(47)} ║
-║  URL:         http://localhost:${PORT.toString().padEnd(36)} ║
-║                                                                ║
-║  Early Cardiovascular Risk Stratification Platform            ║
-║                                                                ║
-╚════════════════════════════════════════════════════════════════╝
+CardioShield AI API running in ${NODE_ENV} mode on port ${PORT}
   `);
   logger.info('Server started successfully', {
     port: PORT,
@@ -100,33 +84,28 @@ const server = app.listen(PORT, () => {
   });
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   logger.error('Unhandled Promise Rejection', {
     message: err.message,
     stack: err.stack,
   });
   
-  // Close server & exit process
   server.close(() => {
     logger.error('Server closed due to unhandled rejection');
     process.exit(1);
   });
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception', {
     message: err.message,
     stack: err.stack,
   });
   
-  // Exit process
   logger.error('Server shutting down due to uncaught exception');
   process.exit(1);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM signal received: closing HTTP server');
   server.close(() => {
