@@ -14,6 +14,8 @@ app.add_middleware(
 
 app.include_router(router)
 
+
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the ML Server API!"}

@@ -1,13 +1,13 @@
 import shap
 import numpy as np
-from app.services.model_loader import model, scaler
+from app.services.model_loader import model
 from app.preprocessing.feature_engineering import engineer_features
 from app.utils.risk_utils import risk_category, confidence_interval
 
 EXPECTED_COLUMNS = [
     'age', 'height', 'weight', 'gender', 'ap_hi', 'ap_lo',
     'cholesterol', 'gluc', 'smoke', 'alco', 'active',
-    'bmi', 'age_group', 'pulse_pressure',
+    'bmi', 'pulse_pressure',
     'age_bp_interaction', 'glucose_bmi'
 ]
 
@@ -74,12 +74,11 @@ def run_prediction(input_data: dict):
     # Feature Engineering
     df = engineer_features(input_data)
 
-    # Scaling
-    df = df[EXPECTED_COLUMNS] # Ensure correct column order for scaler
-    scaled = scaler.transform(df.values)
+    # Ensure correct column order
+    df = df[EXPECTED_COLUMNS]
 
     # Predict probability
-    prob = model.predict_proba(scaled)[0][1]
+    prob = model.predict_proba(df.values)[0][1]
 
     # Risk category
     category = risk_category(prob)
@@ -91,14 +90,15 @@ def run_prediction(input_data: dict):
     global explainer
     if explainer is None:
         try:
-            explainer = _make_explainer(model, background=scaled)
+            base_model = model.estimator  # unwrap calibrated model
+            explainer = shap.TreeExplainer(base_model)
         except Exception:
             # If explainer creation fails, set to None and skip SHAP contributions
             explainer = None
 
     shap_contrib = None
     if explainer is not None:
-        shap_values = explainer.shap_values(scaled)
+        shap_values = explainer.shap_values(df.values)
         # If shap_values returns a list (per-class), pick the first class (as before)
         if isinstance(shap_values, (list, tuple)):
             shap_contrib = shap_values[0]
@@ -126,7 +126,6 @@ def run_prediction(input_data: dict):
         shap_dict = dict(zip(feature_names, arr))
         top_features = sorted(shap_dict.items(), key=lambda x: abs(float(x[1])), reverse=True)[:3]
         top_risk_factors = [{"feature": f, "impact": round(float(v), 4)} for f, v in top_features]
-        print("RAW PROB:", prob)
     return {
         "risk_probability": round(float(prob), 4),
         "risk_category": category,

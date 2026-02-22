@@ -5,14 +5,7 @@ def engineer_features(data: dict):
 
     # BMI
     df["bmi"] = df["weight"] / ((df["height"] / 100) ** 2)
-
-    # Age Group
-    df["age_group"] = pd.cut(
-        df["age"],
-        bins=[0, 30, 40, 50, 60, 100],
-        labels=[0, 1, 2, 3, 4]
-    ).astype(int)
-
+    
     # Pulse Pressure
     df["pulse_pressure"] = df["ap_hi"] - df["ap_lo"]
 
