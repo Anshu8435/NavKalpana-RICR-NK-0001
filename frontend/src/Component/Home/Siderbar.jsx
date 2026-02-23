@@ -3,6 +3,7 @@ function Sidebar({ selectedtab, setselectedtab }) {
     { name: "Dashboard", key: "dashboard" },
     { name: "Patients", key: "admin" },
     { name: "Analytics", key: "analysis" },
+    { name: "Results", key: "result" },
     { name: "Reports", key: "reports" },
     { name: "MyProfile", key: "profile" },
   ];

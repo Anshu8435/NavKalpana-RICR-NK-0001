@@ -1,9 +1,89 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
+import api from "../../utils/api";
 
 const Profile = () => {
   const [openModal, setOpenModal] = useState(false);
   const [step, setStep] = useState(1);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [editData, setEditData] = useState({ name: '', phoneNumber: '', gender: '' });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        if (response.data.success) {
+          setUser(response.data.user);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try { setUser(JSON.parse(storedUser)); } catch {}
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const getUserInitial = () => {
+    if (user?.name) return user.name.charAt(0).toUpperCase();
+    return 'U';
+  };
+
+  const handleOpenEdit = () => {
+    setEditData({
+      name: user?.name || '',
+      phoneNumber: user?.phoneNumber || '',
+      gender: user?.gender || '',
+    });
+    setSaveMessage('');
+    setOpenModal(true);
+    setStep(1);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    setSaveLoading(true);
+    setSaveMessage('');
+    try {
+      const response = await api.put('/auth/profile', editData);
+      if (response.data.success) {
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setSaveMessage('Profile updated successfully!');
+        setTimeout(() => { setOpenModal(false); setSaveMessage(''); }, 1500);
+      }
+    } catch (err) {
+      setSaveMessage(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+        <p className="text-slate-500 text-lg">Loading profile...</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
@@ -15,15 +95,15 @@ const Profile = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 border-b border-slate-200 pb-10 mb-10">
               <div className="flex items-center gap-6">
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#0a3d62] to-[#3c6382] text-white flex items-center justify-center text-4xl font-bold shadow-lg">
-                  R
+                  {getUserInitial()}
                 </div>
 
                 <div>
                   <h2 className="text-3xl font-bold text-[#0a3d62]">
-                    Dr. Rishabh Malviya
+                    {user?.name || 'Doctor'}
                   </h2>
                   <p className="text-slate-600 mt-2 text-lg">
-                    Senior Interventional Cardiologist
+                    {user?.email || ''}
                   </p>
 
                   <span className="inline-block mt-4 bg-blue-50 text-[#0a3d62] px-5 py-1.5 rounded-full text-sm font-medium shadow-sm">
@@ -38,10 +118,7 @@ const Profile = () => {
                 </button>
 
                 <button
-                  onClick={() => {
-                    setOpenModal(true);
-                    setStep(1);
-                  }}
+                  onClick={handleOpenEdit}
                   className="bg-[#ff6b4a] hover:bg-[#e85c3d] transition text-white px-7 py-3 rounded-xl font-medium shadow-lg"
                 >
                   Edit Profile
@@ -68,17 +145,17 @@ const Profile = () => {
             {/* CONTENT GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-10">
               <Info
-                label="Medical Registration No"
-                value="MCI-DEL-2016-45872"
+                label="Full Name"
+                value={user?.name || 'N/A'}
               />
-              <Info label="Qualification" value="MBBS, MD (Cardiology)" />
-              <Info label="Experience" value="8+ Years Clinical Practice" />
-              <Info label="Specialization" value="Interventional Cardiology" />
+              <Info label="Email" value={user?.email || 'N/A'} />
+              <Info label="Gender" value={user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'Not set'} />
+              <Info label="Phone Number" value={user?.phoneNumber || 'Not set'} />
               <Info
-                label="Current Hospital"
-                value="CardioCare Multispeciality Hospital"
+                label="Account Status"
+                value={user?.isEmailVerified ? 'Verified' : 'Not Verified'}
               />
-              <Info label="Department" value="Advanced Cardiac Sciences" />
+              <Info label="Member Since" value={formatDate(user?.createdAt)} />
 
               <div className="md:col-span-2">
                 <Info
@@ -106,30 +183,40 @@ const Profile = () => {
               <div
                 className={`px-4 py-1 rounded-full text-sm font-medium ${step === 1 ? "bg-[#0a3d62] text-white" : "bg-gray-200 text-gray-600"}`}
               >
-                Step 1: Contact
+                Step 1: Personal
               </div>
               <div
                 className={`px-4 py-1 rounded-full text-sm font-medium ${step === 2 ? "bg-[#0a3d62] text-white" : "bg-gray-200 text-gray-600"}`}
               >
-                Step 2: Professional
+                Step 2: Additional
               </div>
             </div>
+
+            {saveMessage && (
+              <div className={`mb-6 p-3 rounded-xl text-sm text-center ${saveMessage.includes('success') ? 'bg-green-50 border border-green-300 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                {saveMessage}
+              </div>
+            )}
 
             {/* STEP 1 CONTENT */}
             {step === 1 && (
               <div>
                 <h2 className="text-2xl font-semibold text-[#0a3d62] mb-6">
-                  Contact Details
+                  Personal Details
                 </h2>
 
                 <div className="space-y-5">
-                  <Input label="Full Name" defaultValue="Dr. Rishabh Malviya" />
-                  <Input label="Email" defaultValue="rishabh@email.com" />
-                  <Input label="Phone Number" defaultValue="+91 9876543210" />
-                  <Input
-                    label="Clinic Address"
-                    defaultValue="Bhopal, Madhya Pradesh"
-                  />
+                  <Input label="Full Name" name="name" value={editData.name} onChange={handleEditChange} />
+                  <div>
+                    <label className="text-sm text-slate-500">Email</label>
+                    <input
+                      type="text"
+                      value={user?.email || ''}
+                      readOnly
+                      className="w-full mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <Input label="Phone Number" name="phoneNumber" value={editData.phoneNumber} onChange={handleEditChange} />
                 </div>
 
                 <div className="flex justify-end mt-8">
@@ -147,26 +234,24 @@ const Profile = () => {
             {step === 2 && (
               <div>
                 <h2 className="text-2xl font-semibold text-[#0a3d62] mb-6">
-                  Professional Information
+                  Additional Information
                 </h2>
 
                 <div className="space-y-5">
-                  <Input
-                    label="Qualification"
-                    defaultValue="MBBS, MD (Cardiology)"
-                  />
-                  <Input
-                    label="Experience"
-                    defaultValue="8+ Years Clinical Practice"
-                  />
-                  <Input
-                    label="Specialization"
-                    defaultValue="Interventional Cardiology"
-                  />
-                  <Input
-                    label="Hospital"
-                    defaultValue="CardioCare Multispeciality Hospital"
-                  />
+                  <div>
+                    <label className="text-sm text-slate-500">Gender</label>
+                    <select
+                      name="gender"
+                      value={editData.gender}
+                      onChange={handleEditChange}
+                      className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0a3d62] bg-white"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex justify-between mt-8">
@@ -178,10 +263,11 @@ const Profile = () => {
                   </button>
 
                   <button
-                    onClick={() => setOpenModal(false)}
-                    className="bg-[#ff6b4a] text-white px-6 py-2 rounded-xl hover:bg-[#e85c3d]"
+                    onClick={handleSaveProfile}
+                    disabled={saveLoading}
+                    className="bg-[#ff6b4a] text-white px-6 py-2 rounded-xl hover:bg-[#e85c3d] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Changes
+                    {saveLoading ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </div>

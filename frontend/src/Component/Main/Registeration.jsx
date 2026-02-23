@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Registration() {
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -12,6 +15,7 @@ function Registration() {
   const [patientId, setPatientId] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errors, setErrors] = useState({});
+  const [showProceedButton, setShowProceedButton] = useState(false);
 
   const generatePatientID = () => {
     const year = new Date().getFullYear();
@@ -58,9 +62,32 @@ function Registration() {
     const newID = generatePatientID();
     setPatientId(newID);
 
+    // Store patient info in localStorage for reference
+    const patientInfo = {
+      patientId: newID,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      fullName: `${formData.firstName} ${formData.lastName}`,
+      contact: formData.contact,
+      age: formData.age,
+      address: formData.address,
+      registeredAt: new Date().toISOString(),
+      registeredBy: JSON.parse(localStorage.getItem('user') || '{}')._id || 'Unknown'
+    };
+
+    // Store in localStorage
+    localStorage.setItem('currentPatient', JSON.stringify(patientInfo));
+
+    // Also save to list of all patients
+    const existingPatients = JSON.parse(localStorage.getItem('registeredPatients') || '[]');
+    existingPatients.push(patientInfo);
+    localStorage.setItem('registeredPatients', JSON.stringify(existingPatients));
+
     setSuccessMessage(
       `✅ Patient Registered Successfully!\nGenerated ID: ${newID}`
     );
+
+    setShowProceedButton(true);
 
     setFormData({
       firstName: "",
@@ -70,7 +97,15 @@ function Registration() {
       address: "",
     });
 
-    setTimeout(() => setSuccessMessage(""), 8000);
+    setTimeout(() => {
+      setSuccessMessage("");
+      setShowProceedButton(false);
+    }, 15000);
+  };
+
+  const handleProceedToAnalysis = () => {
+    // Navigate to Analysis tab with patient ID pre-filled
+    navigate('/home?tab=analysis');
   };
 
   return (
@@ -221,8 +256,25 @@ function Registration() {
               </button>
 
               {successMessage && (
-                <div className="w-full p-4 bg-green-50 border border-green-300 rounded-xl text-green-700 font-semibold text-center whitespace-pre-line">
-                  {successMessage}
+                <div className="w-full space-y-4">
+                  <div className="w-full p-4 bg-green-50 border border-green-300 rounded-xl text-green-700 font-semibold text-center whitespace-pre-line">
+                    {successMessage}
+                  </div>
+                  
+                  {showProceedButton && (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleProceedToAnalysis}
+                        className="bg-[#0a3d62] hover:bg-[#3c6382] text-white px-8 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-[1.03] flex items-center gap-2"
+                      >
+                        Proceed to Health Analysis
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

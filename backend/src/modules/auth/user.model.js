@@ -86,8 +86,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for performance
-userSchema.index({ email: 1 });
+// Indexes for performance (email index is automatic from unique: true)
 userSchema.index({ isEmailVerified: 1 });
 userSchema.index({ createdAt: -1 });
 

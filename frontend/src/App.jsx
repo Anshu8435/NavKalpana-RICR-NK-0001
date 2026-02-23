@@ -8,6 +8,7 @@ import Registration from "./Component/Main/Registeration";
 import Records from "./Component/Main/Records";
 import Login from "./Component/Auth/Login";
 import Signup from "./Component/Auth/Signup";
+import VerifyEmail from "./Component/Auth/VerifyEmail";
 import Header from "./Component/Home/Header";
 function App() {
   return <>
@@ -17,6 +18,7 @@ function App() {
     <Route path = "/" element = {<VisitPage/>}/>
     <Route path = "/login" element = {<Login/>}/>
     <Route path = "/signup" element = {<Signup/>}/>
+    <Route path = "/verify-email/:token" element = {<VerifyEmail/>}/>
     <Route path = "/home" element = {<HomePage/>}/>
     <Route path = "/analitcs" element = {<Analatics/>}/>
     <Route path = "/records" element = {<Records/>}/>

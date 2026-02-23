@@ -1,9 +1,72 @@
 // Login.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import imagee from "../../assets/logo3.jpg";  // ya jo bhi transparent PNG hai
 import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+
 function Login() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendSuccess('');
+    try {
+      const response = await api.post('/auth/resend-verification', { email: formData.email });
+      setResendSuccess(response.data.message || 'Verification email sent! Please check your inbox.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend verification email.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setShowResend(false);
+    setResendSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await api.post('/auth/login', {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (response.data.success) {
+        const { token, user } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        navigate('/home');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      setError(msg);
+      // Show resend button if email not verified
+      if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
+        setShowResend(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div
@@ -67,10 +130,39 @@ function Login() {
             Doctor Login
           </h2>
 
-          <form className="flex flex-col space-y-6">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-center text-sm">
+              {error}
+            </div>
+          )}
+
+          {resendSuccess && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-300 text-green-700 rounded-xl text-center text-sm">
+              {resendSuccess}
+            </div>
+          )}
+
+          {showResend && !resendSuccess && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-xl text-center">
+              <p className="text-yellow-800 text-sm mb-3">Didn't receive the email or link expired?</p>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="text-sm font-semibold text-[#0a3d62] underline hover:text-[#3c6382] disabled:opacity-50"
+              >
+                {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+              </button>
+            </div>
+          )}
+
+          <form className="flex flex-col space-y-6" onSubmit={handleSubmit}>
             <input
               type="email"
+              name="email"
               placeholder="Email or Username"
+              value={formData.email}
+              onChange={handleChange}
               required
               className="
                 px-5 py-4 rounded-xl border border-gray-300 
@@ -82,7 +174,10 @@ function Login() {
 
             <input
               type="password"
+              name="password"
               placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
               required
               className="
                 px-5 py-4 rounded-xl border border-gray-300 
@@ -94,14 +189,16 @@ function Login() {
 
             <button
               type="submit"
+              disabled={loading}
               className="
                 py-4 px-6 bg-[#ff6b4a] text-white font-semibold 
                 text-lg rounded-xl shadow-lg shadow-orange-500/30 
                 hover:bg-[#e65a39] hover:shadow-xl hover:shadow-orange-500/40 
                 hover:-translate-y-1 transition-all duration-300
-              " onClick={() => navigate('/home')}
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
             >
-              Login Securely
+              {loading ? 'Logging in...' : 'Login Securely'}
             </button>
           </form>
 
@@ -111,7 +208,7 @@ function Login() {
             </a>
             <br /><br />
             <span className="text-gray-600">New Doctor? </span>
-            <a href="#" className="text-[#0a3d62] hover:underline font-medium">
+            <a href="/signup" className="text-[#0a3d62] hover:underline font-medium">
               Register Here
             </a>
           </div>

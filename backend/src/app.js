@@ -13,7 +13,7 @@ import requestLogger from './middleware/requestLogger.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import predictionRoutes from './modules/prediction/prediction.routes.js';
 
-const app = express();
+const app = express(); 
 
 connectDB();
 
