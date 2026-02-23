@@ -23,7 +23,6 @@ const createVisit = async (userId, patientData) => {
   }
 };
 
-
 const getPredictionFromML = async (patientData) => {
   try {
     logger.info('Calling ML service for prediction', { mlServiceUrl: ML_SERVICE_URL });
