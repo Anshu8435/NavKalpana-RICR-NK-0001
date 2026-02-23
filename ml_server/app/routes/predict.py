@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.services.predictor import run_prediction
+from app.services.predictor_v2 import run_prediction
 
 router = APIRouter()
 
