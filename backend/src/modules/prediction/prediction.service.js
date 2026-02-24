@@ -97,11 +97,20 @@ const processPrediction = async (userId, patientData) => {
 
     const report = await createReport(visit._id, userId, prediction);
 
+    // Get the saved visit and report
+    const savedVisit = await Visit.findById(visit._id).select('-__v');
+    const savedReport = await Report.findById(report._id)
+      .populate('visitId', 'patientData createdAt')
+      .select('-__v');
+    
+    // Attach the ML prediction directly to visit for frontend access
+    // This bypasses any MongoDB schema transformation issues
+    const visitWithPrediction = savedVisit.toObject();
+    visitWithPrediction.prediction = prediction;
+    
     return {
-      visit: await Visit.findById(visit._id).select('-__v'),
-      report: await Report.findById(report._id)
-        .populate('visitId', 'patientData createdAt')
-        .select('-__v'),
+      visit: visitWithPrediction,
+      report: savedReport,
     };
   } catch (error) {
     if (visit) {

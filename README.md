@@ -1,5 +1,66 @@
-# -NavKalpana-RICR-NK-0001-
+# CardioShield AI - Early Cardiovascular Risk Prediction Platform
+
 CardioShield AI is a software-based platform that uses Artificial Intelligence and Machine Learning to predict cardiovascular disease risk. By analyzing medical and lifestyle data, it provides early detection and personalized recommendations, helping healthcare professionals and individuals make informed, preventive health decisions.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.12
+- MongoDB Atlas account (or local MongoDB)
+
+### Installation & Setup
+
+#### 1. Backend Server
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Edit .env with your MongoDB URI and JWT secret
+npm run dev
+# Runs on http://localhost:5000
+```
+
+#### 2. ML Server
+```bash
+cd ml_server
+.\myvenv\Scripts\activate  # Windows
+# source myvenv/bin/activate  # Mac/Linux
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+# Runs on http://localhost:8000
+```
+
+#### 3. Frontend
+```bash
+cd frontend
+npm install
+# .env already configured with VITE_API_URL=http://localhost:5000/api
+npm run dev
+# Runs on http://localhost:5173
+```
+
+### 🎯 Testing the Application
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete testing procedures.
+
+**Quick Test Flow:**
+1. Visit `http://localhost:5173`
+2. Click "Get Started" → Create doctor account
+3. Login → Register a patient
+4. Fill health screening form
+5. View prediction results
+
+---
+
+## 📖 Documentation
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete setup, testing, and troubleshooting
+- **[INTEGRATION_COMPLETE.md](INTEGRATION_COMPLETE.md)** - Technical integration details
+- **[PROJECT_ANALYSIS.md](PROJECT_ANALYSIS.md)** - Gap analysis vs hackathon requirements
+- **[FINAL_SUMMARY.md](FINAL_SUMMARY.md)** - Quick reference and statistics
+
+---
+
+## -NavKalpana-RICR-NK-0001-
 
 
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import api from "../../utils/api";
 
 function Records() {
@@ -16,7 +17,16 @@ function Records() {
       if (searchCategory) url += `&riskCategory=${encodeURIComponent(searchCategory)}`;
       const response = await api.get(url);
       if (response.data.success) {
-        setReports(response.data.data.reports || []);
+        const reportsData = response.data.data.reports || [];
+        // ALWAYS prefer mlResponse as it contains the raw ML data
+        // The prediction field may have mongoose schema transformation issues
+        const processedReports = reportsData.map(report => {
+          if (report.mlResponse && report.mlResponse.risk_probability != null) {
+            return { ...report, prediction: report.mlResponse };
+          }
+          return report;
+        });
+        setReports(processedReports);
         setPagination(response.data.data.pagination || {});
       }
     } catch (err) {
@@ -57,6 +67,154 @@ function Records() {
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete report');
     }
+  };
+
+  const generatePDF = (report) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFillColor(10, 61, 98);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CardioShield AI', 20, 25);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Cardiovascular Risk Assessment Report', pageWidth - 20, 25, { align: 'right' });
+    
+    // Report Info
+    doc.setTextColor(0, 0, 0);
+    let y = 55;
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Report ID: ${report._id}`, 20, y);
+    doc.text(`Generated: ${formatDate(report.createdAt)}`, pageWidth - 20, y, { align: 'right' });
+    
+    y += 15;
+    
+    // Risk Summary Box
+    const riskProb = report.prediction?.risk_probability;
+    const riskCategory = report.prediction?.risk_category || 'N/A';
+    const riskPercent = riskProb ? Math.round(riskProb * 100) : 'N/A';
+    
+    if (riskCategory === 'High Risk') {
+      doc.setFillColor(239, 68, 68);
+    } else if (riskCategory === 'Moderate Risk') {
+      doc.setFillColor(245, 158, 11);
+    } else {
+      doc.setFillColor(34, 197, 94);
+    }
+    doc.roundedRect(20, y, pageWidth - 40, 30, 3, 3, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Risk Assessment: ${riskPercent}% - ${riskCategory}`, pageWidth / 2, y + 18, { align: 'center' });
+    
+    y += 45;
+    
+    // Patient Information Section
+    doc.setTextColor(10, 61, 98);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Patient Information', 20, y);
+    
+    y += 10;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, pageWidth - 20, y);
+    
+    y += 12;
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    
+    const patientData = report.visitId?.patientData || {};
+    const patientInfo = [
+      ['Age', `${patientData.age || 'N/A'} years`],
+      ['Gender', patientData.gender === 1 ? 'Male' : 'Female'],
+      ['Height', `${patientData.height || 'N/A'} cm`],
+      ['Weight', `${patientData.weight || 'N/A'} kg`],
+      ['Blood Pressure', `${patientData.ap_hi || 'N/A'}/${patientData.ap_lo || 'N/A'} mmHg`],
+      ['Cholesterol', patientData.cholesterol === 1 ? 'Normal' : patientData.cholesterol === 2 ? 'Above Normal' : 'High'],
+    ];
+    
+    patientInfo.forEach(([label, value], i) => {
+      const xPos = i % 2 === 0 ? 25 : pageWidth / 2;
+      if (i % 2 === 0 && i > 0) y += 12;
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${label}:`, xPos, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(value, xPos + 50, y);
+    });
+    
+    y += 25;
+    
+    // SHAP Risk Factors
+    if (report.prediction?.top_risk_factors?.length > 0) {
+      doc.setTextColor(10, 61, 98);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('AI Risk Factor Analysis (SHAP)', 20, y);
+      
+      y += 10;
+      doc.line(20, y, pageWidth - 20, y);
+      
+      y += 12;
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      
+      report.prediction.top_risk_factors.forEach((factor) => {
+        const impact = factor.impact;
+        const sign = impact > 0 ? '+' : '';
+        const color = impact > 0 ? [239, 68, 68] : [34, 197, 94];
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`• ${factor.feature.replace(/_/g, ' ')}`, 25, y);
+        
+        doc.setTextColor(...color);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${sign}${impact.toFixed(4)}`, pageWidth - 40, y);
+        doc.setTextColor(60, 60, 60);
+        
+        y += 10;
+      });
+      
+      y += 5;
+    }
+    
+    // Recommendation
+    if (report.prediction?.recommendation) {
+      y += 5;
+      doc.setTextColor(10, 61, 98);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('AI Recommendation', 20, y);
+      
+      y += 10;
+      doc.line(20, y, pageWidth - 20, y);
+      
+      y += 12;
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont('helvetica', 'normal');
+      
+      const splitText = doc.splitTextToSize(report.prediction.recommendation, pageWidth - 45);
+      doc.text(splitText, 25, y);
+    }
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('This report is generated by CardioShield AI and is for informational purposes only.', pageWidth / 2, 280, { align: 'center' });
+    doc.text('Please consult a healthcare professional for medical advice.', pageWidth / 2, 286, { align: 'center' });
+    
+    // Save
+    doc.save(`CardioShield_Report_${report._id.slice(-8)}.pdf`);
   };
 
   return (
@@ -155,7 +313,7 @@ function Records() {
                       <td className="px-6 py-4 font-medium text-xs">{report._id?.slice(-8).toUpperCase()}</td>
                       <td className="px-6 py-4">{report.visitId?.patientData?.age || 'N/A'}</td>
                       <td className="px-6 py-4">{report.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</td>
-                      <td className="px-6 py-4">{report.prediction?.risk_probability ? Math.round(report.prediction.risk_probability * 100) + '%' : 'N/A'}</td>
+                      <td className="px-6 py-4">{report.prediction?.risk_probability != null ? Math.round(report.prediction.risk_probability * 100) + '%' : 'N/A'}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-4 py-1.5 rounded-full text-xs font-medium text-white ${getCategoryBadge(report.prediction?.risk_category)}`}
@@ -215,36 +373,42 @@ function Records() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-xl">
                     <p className="text-xs text-slate-500">Risk Category</p>
-                    <p className={`text-lg font-bold ${selectedReport.prediction?.risk_category === 'High Risk' ? 'text-red-600' : selectedReport.prediction?.risk_category === 'Moderate Risk' ? 'text-orange-500' : 'text-green-600'}`}>{selectedReport.prediction?.risk_category}</p>
+                    <p className={`text-lg font-bold ${selectedReport.prediction?.risk_category === 'High Risk' ? 'text-red-600' : selectedReport.prediction?.risk_category === 'Moderate Risk' ? 'text-orange-500' : 'text-green-600'}`}>{selectedReport.prediction?.risk_category || 'N/A'}</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-xl">
                     <p className="text-xs text-slate-500">Risk Probability</p>
-                    <p className="text-lg font-bold text-[#0a3d62]">{selectedReport.prediction?.risk_probability ? Math.round(selectedReport.prediction.risk_probability * 100) + '%' : 'N/A'}</p>
+                    <p className="text-lg font-bold text-[#0a3d62]">{selectedReport.prediction?.risk_probability != null ? Math.round(selectedReport.prediction.risk_probability * 100) + '%' : 'N/A'}</p>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-xl">
                   <p className="text-xs text-slate-500 mb-2">Patient Data</p>
                   <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div><span className="text-slate-500">Age:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.age}</span></div>
+                    <div><span className="text-slate-500">Age:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.age || 'N/A'}</span></div>
                     <div><span className="text-slate-500">Gender:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</span></div>
-                    <div><span className="text-slate-500">Height:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.height} cm</span></div>
-                    <div><span className="text-slate-500">Weight:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.weight} kg</span></div>
-                    <div><span className="text-slate-500">BP:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.ap_hi}/{selectedReport.visitId?.patientData?.ap_lo}</span></div>
+                    <div><span className="text-slate-500">Height:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.height || 'N/A'} cm</span></div>
+                    <div><span className="text-slate-500">Weight:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.weight || 'N/A'} kg</span></div>
+                    <div><span className="text-slate-500">BP:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.ap_hi || 'N/A'}/{selectedReport.visitId?.patientData?.ap_lo || 'N/A'}</span></div>
                     <div><span className="text-slate-500">Cholesterol:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.cholesterol === 1 ? 'Normal' : selectedReport.visitId?.patientData?.cholesterol === 2 ? 'Above Normal' : 'High'}</span></div>
                   </div>
                 </div>
 
                 {selectedReport.prediction?.top_risk_factors?.length > 0 && (
                   <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs text-slate-500 mb-2">Top Risk Factors</p>
-                    <ul className="space-y-1">
-                      {selectedReport.prediction.top_risk_factors.map((factor, i) => (
-                        <li key={i} className="flex justify-between text-sm">
-                          <span className="capitalize">{factor.feature.replace('_', ' ')}</span>
-                          <span className="font-medium">{(factor.impact * 100).toFixed(1)}%</span>
-                        </li>
-                      ))}
+                    <p className="text-xs text-slate-500 mb-2">SHAP Risk Factor Analysis</p>
+                    <p className="text-[10px] text-slate-400 mb-3">Positive values increase risk, negative values decrease risk</p>
+                    <ul className="space-y-2">
+                      {selectedReport.prediction.top_risk_factors.map((factor, i) => {
+                        const isPositive = factor.impact > 0;
+                        return (
+                          <li key={i} className="flex justify-between items-center">
+                            <span className="capitalize text-sm">{factor.feature.replace(/_/g, ' ')}</span>
+                            <span className={`font-bold text-sm ${isPositive ? 'text-red-600' : 'text-green-600'}`}>
+                              {isPositive ? '+' : ''}{factor.impact.toFixed(4)}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -257,6 +421,17 @@ function Records() {
                 )}
 
                 <p className="text-xs text-slate-400 text-right">Created: {formatDate(selectedReport.createdAt)}</p>
+
+                {/* Download PDF Button */}
+                <button
+                  onClick={() => generatePDF(selectedReport)}
+                  className="w-full bg-[#0a3d62] hover:bg-[#083050] text-white py-3 rounded-xl font-medium transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download PDF Report
+                </button>
               </div>
             </div>
           </div>

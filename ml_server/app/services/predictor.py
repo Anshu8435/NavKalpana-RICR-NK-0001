@@ -4,11 +4,12 @@ from app.services.model_loader import model
 from app.preprocessing.feature_engineering import engineer_features
 from app.utils.risk_utils import risk_category, confidence_interval
 
+# Column order must match training: after dropping 'id' and 'cardio' from original CSV
+# Original CSV order: id, age, gender, height, weight, ap_hi, ap_lo, cholesterol, gluc, smoke, alco, active, cardio
 EXPECTED_COLUMNS = [
-    'age', 'height', 'weight', 'gender', 'ap_hi', 'ap_lo',
+    'age', 'gender', 'height', 'weight', 'ap_hi', 'ap_lo',
     'cholesterol', 'gluc', 'smoke', 'alco', 'active',
-    'bmi', 'pulse_pressure',
-    'age_bp_interaction', 'glucose_bmi'
+    'bmi', 'pulse_pressure', 'age_bp_interaction', 'glucose_bmi'
 ]
 
 class _ShapWrapper:
@@ -77,8 +78,9 @@ def run_prediction(input_data: dict):
     # Ensure correct column order
     df = df[EXPECTED_COLUMNS]
 
-    # Predict probability
-    prob = model.predict_proba(df.values)[0][1]
+    # Predict probability (model expects unscaled data - XGBoost was trained without scaling)
+    proba_result = model.predict_proba(df.values)
+    prob = proba_result[0][1]
 
     # Risk category
     category = risk_category(prob)
@@ -98,6 +100,7 @@ def run_prediction(input_data: dict):
 
     shap_contrib = None
     if explainer is not None:
+        # Use raw features for SHAP - same as what was passed to model
         shap_values = explainer.shap_values(df.values)
         # If shap_values returns a list (per-class), pick the first class (as before)
         if isinstance(shap_values, (list, tuple)):
@@ -126,10 +129,12 @@ def run_prediction(input_data: dict):
         shap_dict = dict(zip(feature_names, arr))
         top_features = sorted(shap_dict.items(), key=lambda x: abs(float(x[1])), reverse=True)[:3]
         top_risk_factors = [{"feature": f, "impact": round(float(v), 4)} for f, v in top_features]
-    return {
+    
+    result = {
         "risk_probability": round(float(prob), 4),
         "risk_category": category,
         "confidence_interval": [ci_lower, ci_upper],
         "top_risk_factors": top_risk_factors,
         "recommendation": "Consult cardiology specialist if high risk."
     }
+    return result

@@ -19,7 +19,7 @@ connectDB();
 
 app.use(helmet()); 
 app.use(mongoSanitize()); 
-
+ 
 
 const corsOptions = { 
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',

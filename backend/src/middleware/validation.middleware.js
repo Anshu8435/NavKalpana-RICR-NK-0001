@@ -3,9 +3,12 @@ import ErrorResponse from '../shared/errorResponse.js';
 import logger from '../config/logger.js';
 
 
-const validate = (schema) => {
+const validate = (schema, source = 'body') => {
   return (req, res, next) => {
-    const { error, value } = schema.validate(req.body, {
+    // Select the correct source to validate (body, params, or query)
+    const dataToValidate = source === 'params' ? req.params : source === 'query' ? req.query : req.body;
+    
+    const { error, value } = schema.validate(dataToValidate, {
       abortEarly: false,
       stripUnknown: true,
     });
@@ -22,12 +25,20 @@ const validate = (schema) => {
         ip: req.ip,
         userId: req.user?._id,
         validationErrors: errors,
+        source,
       });
 
       return next(new ErrorResponse('Validation failed', 400, errors));
     }
 
-    req.body = value;
+    // Assign validated values back to the appropriate source
+    if (source === 'params') {
+      req.params = value;
+    } else if (source === 'query') {
+      req.query = value;
+    } else {
+      req.body = value;
+    }
     next();
   };
 };
