@@ -1,11 +1,13 @@
 // Login.jsx
 import React, { useState } from 'react';
-import imagee from "../../assets/logo3.jpg";  // ya jo bhi transparent PNG hai
+import imagee from "../../assets/logo3.jpg";
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/apiService';
 
 function Login() {
   const navigate = useNavigate();
+  const { login: authLogin, checkAuth } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,8 +29,8 @@ function Login() {
     setResendLoading(true);
     setResendSuccess('');
     try {
-      const response = await api.post('/auth/resend-verification', { email: formData.email });
-      setResendSuccess(response.data.message || 'Verification email sent! Please check your inbox.');
+      const response = await authService.resendVerification(formData.email);
+      setResendSuccess(response.message || 'Verification email sent! Please check your inbox.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to resend verification email.');
     } finally {
@@ -44,25 +46,19 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (response.data.success) {
-        const { token, user } = response.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
+      const result = await authLogin(formData.email, formData.password);
+      
+      if (result.success) {
         navigate('/home');
+      } else {
+        setError(result.message);
+        // Show resend button if email not verified
+        if (result.message.toLowerCase().includes('verify')) {
+          setShowResend(true);
+        }
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed. Please check your credentials.';
-      setError(msg);
-      // Show resend button if email not verified
-      if (err.response?.status === 403 && msg.toLowerCase().includes('verify')) {
-        setShowResend(true);
-      }
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -191,9 +187,8 @@ function Login() {
               type="submit"
               disabled={loading}
               className="
-                py-4 px-6 bg-[#ff6b4a] text-white font-semibold 
-                text-lg rounded-xl shadow-lg shadow-orange-500/30 
-                hover:bg-[#e65a39] hover:shadow-xl hover:shadow-orange-500/40 
+                py-4 px-6 bg-blue-500 hover:bg-blue-400 text-white font-semibold 
+                text-lg rounded-xl shadow-lg shadow-blue-500/30 
                 hover:-translate-y-1 transition-all duration-300
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
@@ -203,7 +198,7 @@ function Login() {
           </form>
 
           <div className="text-center mt-8 text-sm">
-            <a href="#" className="text-[#0a3d62] hover:underline">
+            <a href="/forgot-password" className="text-[#0a3d62] hover:underline">
               Forgot Password?
             </a>
             <br /><br />

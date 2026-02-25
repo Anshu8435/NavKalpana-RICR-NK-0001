@@ -137,7 +137,12 @@ const authValidation = {
       'string.min': 'Name must be at least 2 characters',
       'string.max': 'Name cannot exceed 50 characters',
     }),
-   
+    phoneNumber: Joi.string()
+      .pattern(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/)
+      .allow('')
+      .messages({
+        'string.pattern.base': 'Please provide a valid phone number',
+      }),
     dateOfBirth: Joi.date().max('now').messages({
       'date.max': 'Date of birth cannot be in the future',
     }),

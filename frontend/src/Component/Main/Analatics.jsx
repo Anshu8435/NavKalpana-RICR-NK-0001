@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../utils/api";
+import { predictionService } from "../../services/apiService";
+import { LoadingButton } from "../../components/Loading";
+import { Alert } from "../../components/Alert";
 
 function Analatics() {
   const navigate = useNavigate();
@@ -53,6 +55,11 @@ function Analatics() {
     setLoading(true);
 
     try {
+      // Validate form data
+      if (!formData.patientId.trim()) {
+        throw new Error('Patient ID is required');
+      }
+
       // Map form data to API format
       const predictionData = {
         age: parseInt(formData.age),
@@ -68,34 +75,32 @@ function Analatics() {
         active: formData.active === 'active' ? 1 : 0,
       };
 
-      const response = await api.post('/predictions', predictionData);
+      const response = await predictionService.createPrediction(predictionData);
 
-      if (response.data.success) {
+      if (response.success) {
         // Store prediction result for Result component
         localStorage.setItem('latestPrediction', JSON.stringify({
-          ...response.data.data,
+          ...response.data,
           patientId: formData.patientId,
           patientData: predictionData
         }));
         
         // Navigate to result tab
-        alert('Prediction completed successfully!');
         navigate('/home?tab=result');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Prediction failed. Please check your inputs and try again.');
+      setError(err.response?.data?.message || err.message || 'Prediction failed. Please check your inputs and try again.');
     } finally {
       setLoading(false);
     }
   };
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col w-full">
-      <div className="flex-1 py-8 sm:py-10 lg:py-12 px-4 sm:px-6 lg:px-8">
+    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-8">
+      <div className="w-full max-w-6xl mx-auto">
         
-        <div>
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
-              <div className="text-center mb-8 sm:mb-10">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
+            <div className="text-center mb-8 sm:mb-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#0a3d62] tracking-tight">
             AI-Based Early Cardiovascular Risk Screening
           </h1>
@@ -109,9 +114,12 @@ function Analatics() {
         </div>
 
               {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-center">
-                  {error}
-                </div>
+                <Alert 
+                  type="error" 
+                  message={error} 
+                  onClose={() => setError('')}
+                  className="mb-6"
+                />
               )}
              
               <form onSubmit={handleSubmit}>
@@ -315,22 +323,20 @@ function Analatics() {
 
                 {/* Submit Button */}
                 <div className="pt-10">
-                  <button
+                  <LoadingButton
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#e74c3c] hover:bg-[#c0392b] text-white font-semibold text-lg py-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl focus:ring-4 focus:ring-[#e74c3c]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    loading={loading}
+                    className="w-full bg-[#e74c3c] hover:bg-[#c0392b] text-white font-semibold text-lg py-4 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl focus:ring-4 focus:ring-[#e74c3c]/30"
                   >
-                    {loading ? 'Predicting...' : 'Predict Cardiovascular Risk'}
-                  </button>
+                    Predict Cardiovascular Risk
+                  </LoadingButton>
                 </div>
 
               </form>
             </div>
           </div>
         </div>
-
-      </div>
-    </div>
+    </main>
   );
 }
 

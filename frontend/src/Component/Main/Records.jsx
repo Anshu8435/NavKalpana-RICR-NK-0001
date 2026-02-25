@@ -1,36 +1,75 @@
 import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import api from "../../utils/api";
+import { predictionService } from "../../services/apiService";
+import { LoadingSpinner, CardSkeleton } from "../../components/Loading";
+import { Alert, EmptyState } from "../../components/Alert";
+import { ConfirmDialog } from "../../components/Modal";
 
-function Records() {
+function Records({ searchQuery = '', setSearchQuery }) {
   const [searchId, setSearchId] = useState("");
   const [searchCategory, setSearchCategory] = useState("");
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalReports: 0 });
   const [selectedReport, setSelectedReport] = useState(null);
+  const [error, setError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, reportId: null });
+
+  // Update searchId when searchQuery prop changes
+  useEffect(() => {
+    if (searchQuery) {
+      setSearchId(searchQuery);
+      // Auto-trigger search when searchQuery is provided
+      setTimeout(() => {
+        fetchReports(1);
+      }, 100);
+    }
+  }, [searchQuery]);
 
   const fetchReports = async (page = 1) => {
     setLoading(true);
+    setError('');
     try {
-      let url = `/predictions/reports?page=${page}&limit=10&sortBy=createdAt&order=desc`;
-      if (searchCategory) url += `&riskCategory=${encodeURIComponent(searchCategory)}`;
-      const response = await api.get(url);
-      if (response.data.success) {
-        const reportsData = response.data.data.reports || [];
+      const params = {
+        page,
+        limit: 10,
+        sortBy: 'createdAt',
+        order: 'desc',
+      };
+      
+      if (searchCategory) {
+        params.riskCategory = searchCategory;
+      }
+
+      const response = await predictionService.getUserReports(params);
+      
+      if (response.success) {
+        let reportsData = response.data.reports || [];
+        
         // ALWAYS prefer mlResponse as it contains the raw ML data
-        // The prediction field may have mongoose schema transformation issues
         const processedReports = reportsData.map(report => {
           if (report.mlResponse && report.mlResponse.risk_probability != null) {
             return { ...report, prediction: report.mlResponse };
           }
           return report;
         });
-        setReports(processedReports);
-        setPagination(response.data.data.pagination || {});
+        
+        // Client-side filter by searchId if provided
+        let filteredReports = processedReports;
+        if (searchId && searchId.trim()) {
+          const searchTerm = searchId.trim().toLowerCase();
+          filteredReports = processedReports.filter(report => {
+            const reportId = report._id?.slice(-8).toLowerCase() || '';
+            return reportId.includes(searchTerm);
+          });
+        }
+        
+        setReports(filteredReports);
+        setPagination(response.data.pagination || {});
       }
     } catch (err) {
       console.error('Error fetching reports:', err);
+      setError(err.response?.data?.message || 'Failed to load reports');
     } finally {
       setLoading(false);
     }
@@ -59,13 +98,19 @@ function Records() {
     setSelectedReport(report);
   };
 
-  const handleDelete = async (reportId) => {
-    if (!confirm('Are you sure you want to delete this report?')) return;
+  const handleDeleteClick = (reportId) => {
+    setDeleteConfirm({ isOpen: true, reportId });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.reportId) return;
+    
     try {
-      await api.delete(`/predictions/reports/${reportId}`);
+      await predictionService.deleteReport(deleteConfirm.reportId);
       fetchReports(pagination.currentPage);
+      setDeleteConfirm({ isOpen: false, reportId: null });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete report');
+      setError(err.response?.data?.message || 'Failed to delete report');
     }
   };
 
@@ -218,20 +263,39 @@ function Records() {
   };
 
   return (
-    <div className="px-6 md:px-10 lg:px-14 py-10 w-full">
+    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
+      <div className="w-full max-w-7xl mx-auto">
 
-      {/* Page Container */}
-      <div className="max-w-7xl mx-auto">
+        {/* Confirm Delete Dialog */}
+        <ConfirmDialog
+          isOpen={deleteConfirm.isOpen}
+          onClose={() => setDeleteConfirm({ isOpen: false, reportId: null })}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Report"
+          message="Are you sure you want to delete this report? This action cannot be undone."
+          confirmText="Delete"
+          type="danger"
+        />
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-[#1f4a6e]">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1f4a6e]">
             Patient Screening Records
           </h1>
-          <p className="text-slate-500 mt-2">
+          <p className="text-slate-500 mt-2 text-sm md:text-base">
             Search and manage cardiovascular risk screening data
           </p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert 
+            type="error" 
+            message={error} 
+            onClose={() => setError('')}
+            className="mb-6"
+          />
+        )}
 
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-10">
@@ -275,8 +339,8 @@ function Records() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Table - Desktop View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full border-collapse">
 
               <thead>
@@ -294,14 +358,19 @@ function Records() {
               <tbody className="text-slate-700">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
-                      Loading reports...
+                    <td colSpan={7} className="px-6 py-8 text-center">
+                      <LoadingSpinner className="mx-auto" />
+                      <p className="mt-4 text-slate-500">Loading reports...</p>
                     </td>
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
-                      No matching records found
+                    <td colSpan={7} className="px-6 py-8">
+                      <EmptyState
+                        icon="📋"
+                        title="No Reports Found"
+                        message="There are no screening reports matching your search criteria."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -326,7 +395,7 @@ function Records() {
                         <button onClick={() => handleView(report)} className="bg-[#1f4a6e] hover:bg-[#163854] text-white px-5 py-2 rounded-lg text-sm font-medium transition">
                           View
                         </button>
-                        <button onClick={() => handleDelete(report._id)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        <button onClick={() => handleDeleteClick(report._id)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
                           Delete
                         </button>
                       </td>
@@ -336,6 +405,72 @@ function Records() {
               </tbody>
 
             </table>
+          </div>
+
+          {/* Cards - Mobile View */}
+          <div className="md:hidden space-y-4">
+            {loading ? (
+              <div className="text-center py-8">
+                <LoadingSpinner className="mx-auto" />
+                <p className="mt-4 text-slate-500 text-sm">Loading reports...</p>
+              </div>
+            ) : reports.length === 0 ? (
+              <EmptyState
+                icon="📋"
+                title="No Reports Found"
+                message="There are no screening reports matching your search criteria."
+              />
+            ) : (
+              reports.map((report) => (
+                <div key={report._id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Report ID</p>
+                      <p className="font-bold text-sm text-slate-800">{report._id?.slice(-8).toUpperCase()}</p>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getCategoryBadge(report.prediction?.risk_category)}`}
+                    >
+                      {report.prediction?.risk_category || 'N/A'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                    <div>
+                      <p className="text-xs text-slate-500">Age</p>
+                      <p className="font-semibold text-slate-800">{report.visitId?.patientData?.age || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Gender</p>
+                      <p className="font-semibold text-slate-800">{report.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Risk %</p>
+                      <p className="font-semibold text-slate-800">{report.prediction?.risk_probability != null ? Math.round(report.prediction.risk_probability * 100) + '%' : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Date</p>
+                      <p className="font-semibold text-slate-800">{formatDate(report.createdAt)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-3 border-t border-slate-200">
+                    <button 
+                      onClick={() => handleView(report)} 
+                      className="flex-1 bg-[#1f4a6e] hover:bg-[#163854] text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      View
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteClick(report._id)} 
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Pagination */}
@@ -437,7 +572,7 @@ function Records() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
