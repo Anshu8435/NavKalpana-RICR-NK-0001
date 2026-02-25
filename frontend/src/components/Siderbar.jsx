@@ -2,6 +2,7 @@ import logo from "../assets/logo.png";
 import { useState } from "react";
 import { MdDashboard } from "react-icons/md";
 import { FaHeartbeat, FaUserInjured, FaFileMedical, FaUserCircle } from "react-icons/fa";
+import { ArrowBigRight } from "lucide-react";
 
 function Sidebar({ selectedtab, setselectedtab }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -50,7 +51,7 @@ function Sidebar({ selectedtab, setselectedtab }) {
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="p-4 text-center text-blue-200 hover:bg-white/5 border-t border-white/10"
       >
-        {sidebarOpen ? '◀' : '▶'}
+        {sidebarOpen ? <ArrowBigRight /> : <ArrowBigRight className="rotate-180" />}
       </button>
     </aside>
   );

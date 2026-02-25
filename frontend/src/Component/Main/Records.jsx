@@ -1,193 +1,199 @@
 import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { predictionService } from "../../services/apiService";
-import { LoadingSpinner, CardSkeleton } from "../../components/Loading";
+import { LoadingSpinner } from "../../components/Loading";
 import { Alert, EmptyState } from "../../components/Alert";
-import { ConfirmDialog } from "../../components/Modal";
+import { Search, Download, UserPlus, ChevronRight, X } from "lucide-react";
 
 function Records({ searchQuery = '', setSearchQuery }) {
-  const [searchId, setSearchId] = useState("");
-  const [searchCategory, setSearchCategory] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [riskFilter, setRiskFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
   const [reports, setReports] = useState([]);
+  const [filteredReports, setFilteredReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalReports: 0 });
   const [selectedReport, setSelectedReport] = useState(null);
   const [error, setError] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, reportId: null });
-
-  // Update searchId when searchQuery prop changes
-  useEffect(() => {
-    if (searchQuery) {
-      setSearchId(searchQuery);
-      // Auto-trigger search when searchQuery is provided
-      setTimeout(() => {
-        fetchReports(1);
-      }, 100);
-    }
-  }, [searchQuery]);
-
-  const fetchReports = async (page = 1) => {
-    setLoading(true);
-    setError('');
-    try {
-      const params = {
-        page,
-        limit: 10,
-        sortBy: 'createdAt',
-        order: 'desc',
-      };
-      
-      if (searchCategory) {
-        params.riskCategory = searchCategory;
-      }
-
-      const response = await predictionService.getUserReports(params);
-      
-      if (response.success) {
-        let reportsData = response.data.reports || [];
-        
-        // ALWAYS prefer mlResponse as it contains the raw ML data
-        const processedReports = reportsData.map(report => {
-          if (report.mlResponse && report.mlResponse.risk_probability != null) {
-            return { ...report, prediction: report.mlResponse };
-          }
-          return report;
-        });
-        
-        // Client-side filter by searchId if provided
-        let filteredReports = processedReports;
-        if (searchId && searchId.trim()) {
-          const searchTerm = searchId.trim().toLowerCase();
-          filteredReports = processedReports.filter(report => {
-            const reportId = report._id?.slice(-8).toLowerCase() || '';
-            return reportId.includes(searchTerm);
-          });
-        }
-        
-        setReports(filteredReports);
-        setPagination(response.data.pagination || {});
-      }
-    } catch (err) {
-      console.error('Error fetching reports:', err);
-      setError(err.response?.data?.message || 'Failed to load reports');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchReports();
   }, []);
 
-  const handleSearch = () => {
-    fetchReports(1);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const getCategoryBadge = (category) => {
-    if (category === 'High Risk') return 'bg-red-500';
-    if (category === 'Moderate Risk') return 'bg-amber-500';
-    return 'bg-green-500';
-  };
-
-  const handleView = (report) => {
-    setSelectedReport(report);
-  };
-
-  const handleDeleteClick = (reportId) => {
-    setDeleteConfirm({ isOpen: true, reportId });
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirm.reportId) return;
-    
-    try {
-      await predictionService.deleteReport(deleteConfirm.reportId);
-      fetchReports(pagination.currentPage);
-      setDeleteConfirm({ isOpen: false, reportId: null });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete report');
+  useEffect(() => {
+    if (searchQuery) {
+      setSearchTerm(searchQuery);
     }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    filterReports();
+  }, [searchTerm, riskFilter, genderFilter, reports]);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await predictionService.getUserReports({
+        page: 1,
+        limit: 100,
+        sortBy: 'createdAt',
+        order: 'desc',
+      });
+      
+      if (response.success) {
+        const reportsData = response.data.reports || [];
+        const processedReports = reportsData.map((report, index) => {
+          const prediction = report.mlResponse && report.mlResponse.risk_probability != null 
+            ? report.mlResponse 
+            : report.prediction;
+          
+          return {
+            ...report,
+            prediction,
+            patientId: `P${String(index + 1).padStart(3, '0')}`,
+          };
+        });
+        setReports(processedReports);
+        setFilteredReports(processedReports);
+      }
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+      setError('Failed to load patient records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterReports = () => {
+    let filtered = [...reports];
+
+    // Search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(report => {
+        const reportId = report._id?.slice(-8).toLowerCase() || '';
+        const patientId = report.patientId?.toLowerCase() || '';
+        return reportId.includes(searchLower) || patientId.includes(searchLower);
+      });
+    }
+
+    // Risk filter
+    if (riskFilter) {
+      filtered = filtered.filter(report => 
+        report.prediction?.risk_category === riskFilter
+      );
+    }
+
+    // Gender filter
+    if (genderFilter) {
+      const genderValue = genderFilter === 'Male' ? 1 : genderFilter === 'Female' ? 2 : null;
+      if (genderValue) {
+        filtered = filtered.filter(report => 
+          report.visitId?.patientData?.gender === genderValue
+        );
+      }
+    }
+
+    setFilteredReports(filtered);
+  };
+
+  const getInitials = (index) => {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return letters[index % 26] + letters[(index + 5) % 26];
+  };
+
+  const getRiskBadgeClass = (category) => {
+    if (category === 'High Risk') return 'bg-red-100 text-red-700';
+    if (category === 'Moderate Risk') return 'bg-yellow-100 text-yellow-700';
+    return 'bg-green-100 text-green-700';
+  };
+
+  const exportAllReports = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFillColor(44, 95, 124);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CardioShield AI - Patient Records', pageWidth / 2, 25, { align: 'center' });
+
+    y = 55;
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Patients: ${filteredReports.length}`, 20, y);
+
+    y += 15;
+    filteredReports.forEach((report, index) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+
+      const patientData = report.visitId?.patientData || {};
+      const riskScore = report.prediction?.risk_probability 
+        ? Math.round(report.prediction.risk_probability * 100) 
+        : 0;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${report.patientId} - Age: ${patientData.age || 'N/A'}`, 20, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Gender: ${patientData.gender === 1 ? 'Male' : 'Female'}`, 20, y + 6);
+      doc.text(`Risk: ${report.prediction?.risk_category || 'N/A'} (${riskScore}%)`, 20, y + 12);
+      
+      y += 25;
+    });
+
+    doc.save(`CardioShield_Patient_Records_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const generatePDF = (report) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    
+    let y = 10;
+
     // Header
-    doc.setFillColor(10, 61, 98);
+    doc.setFillColor(44, 95, 124);
     doc.rect(0, 0, pageWidth, 40, 'F');
-    
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('CardioShield AI', 20, 25);
-    
+    doc.text('CardioShield AI', pageWidth / 2, 20, { align: 'center' });
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('Cardiovascular Risk Assessment Report', pageWidth - 20, 25, { align: 'right' });
-    
-    // Report Info
-    doc.setTextColor(0, 0, 0);
-    let y = 55;
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Report ID: ${report._id}`, 20, y);
-    doc.text(`Generated: ${formatDate(report.createdAt)}`, pageWidth - 20, y, { align: 'right' });
-    
-    y += 15;
-    
-    // Risk Summary Box
-    const riskProb = report.prediction?.risk_probability;
-    const riskCategory = report.prediction?.risk_category || 'N/A';
-    const riskPercent = riskProb ? Math.round(riskProb * 100) : 'N/A';
-    
-    if (riskCategory === 'High Risk') {
-      doc.setFillColor(239, 68, 68);
-    } else if (riskCategory === 'Moderate Risk') {
-      doc.setFillColor(245, 158, 11);
-    } else {
-      doc.setFillColor(34, 197, 94);
-    }
-    doc.roundedRect(20, y, pageWidth - 40, 30, 3, 3, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Risk Assessment: ${riskPercent}% - ${riskCategory}`, pageWidth / 2, y + 18, { align: 'center' });
-    
-    y += 45;
-    
-    // Patient Information Section
-    doc.setTextColor(10, 61, 98);
+    doc.text('Cardiovascular Risk Assessment Report', pageWidth / 2, 30, { align: 'center' });
+
+    y = 55;
+
+    // Patient Info
+    doc.setTextColor(44, 95, 124);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Patient Information', 20, y);
-    
+
     y += 10;
     doc.setDrawColor(200, 200, 200);
     doc.line(20, y, pageWidth - 20, y);
-    
+
     y += 12;
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    
+
     const patientData = report.visitId?.patientData || {};
     const patientInfo = [
+      ['Patient ID', report.patientId],
       ['Age', `${patientData.age || 'N/A'} years`],
       ['Gender', patientData.gender === 1 ? 'Male' : 'Female'],
       ['Height', `${patientData.height || 'N/A'} cm`],
       ['Weight', `${patientData.weight || 'N/A'} kg`],
       ['Blood Pressure', `${patientData.ap_hi || 'N/A'}/${patientData.ap_lo || 'N/A'} mmHg`],
-      ['Cholesterol', patientData.cholesterol === 1 ? 'Normal' : patientData.cholesterol === 2 ? 'Above Normal' : 'High'],
     ];
-    
+
     patientInfo.forEach(([label, value], i) => {
       const xPos = i % 2 === 0 ? 25 : pageWidth / 2;
       if (i % 2 === 0 && i > 0) y += 12;
@@ -196,95 +202,74 @@ function Records({ searchQuery = '', setSearchQuery }) {
       doc.setFont('helvetica', 'normal');
       doc.text(value, xPos + 50, y);
     });
-    
+
     y += 25;
+
+    // Risk Assessment
+    doc.setTextColor(44, 95, 124);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Risk Assessment', 20, y);
+
+    y += 10;
+    doc.line(20, y, pageWidth - 20, y);
+
+    y += 12;
+    doc.setFontSize(11);
+    doc.setTextColor(60, 60, 60);
+
+    const riskScore = report.prediction?.risk_probability 
+      ? Math.round(report.prediction.risk_probability * 100) 
+      : 0;
     
-    // SHAP Risk Factors
-    if (report.prediction?.top_risk_factors?.length > 0) {
-      doc.setTextColor(10, 61, 98);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('AI Risk Factor Analysis (SHAP)', 20, y);
-      
-      y += 10;
-      doc.line(20, y, pageWidth - 20, y);
-      
-      y += 12;
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      
-      report.prediction.top_risk_factors.forEach((factor) => {
-        const impact = factor.impact;
-        const sign = impact > 0 ? '+' : '';
-        const color = impact > 0 ? [239, 68, 68] : [34, 197, 94];
-        
-        doc.setFont('helvetica', 'normal');
-        doc.text(`• ${factor.feature.replace(/_/g, ' ')}`, 25, y);
-        
-        doc.setTextColor(...color);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${sign}${impact.toFixed(4)}`, pageWidth - 40, y);
-        doc.setTextColor(60, 60, 60);
-        
-        y += 10;
-      });
-      
-      y += 5;
-    }
-    
-    // Recommendation
-    if (report.prediction?.recommendation) {
-      y += 5;
-      doc.setTextColor(10, 61, 98);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('AI Recommendation', 20, y);
-      
-      y += 10;
-      doc.line(20, y, pageWidth - 20, y);
-      
-      y += 12;
-      doc.setFontSize(10);
-      doc.setTextColor(60, 60, 60);
-      doc.setFont('helvetica', 'normal');
-      
-      const splitText = doc.splitTextToSize(report.prediction.recommendation, pageWidth - 45);
-      doc.text(splitText, 25, y);
-    }
-    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Risk Category:', 25, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(report.prediction?.risk_category || 'N/A', 80, y);
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Risk Score:', 25, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${riskScore}%`, 80, y);
+
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text('This report is generated by CardioShield AI and is for informational purposes only.', pageWidth / 2, 280, { align: 'center' });
-    doc.text('Please consult a healthcare professional for medical advice.', pageWidth / 2, 286, { align: 'center' });
-    
-    // Save
-    doc.save(`CardioShield_Report_${report._id.slice(-8)}.pdf`);
+    doc.text('CardioShield AI - For informational purposes only. Consult a healthcare professional.', pageWidth / 2, 280, { align: 'center' });
+
+    doc.save(`Patient_${report.patientId}_Report.pdf`);
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
-      <div className="w-full max-w-7xl mx-auto">
-
-        {/* Confirm Delete Dialog */}
-        <ConfirmDialog
-          isOpen={deleteConfirm.isOpen}
-          onClose={() => setDeleteConfirm({ isOpen: false, reportId: null })}
-          onConfirm={handleDeleteConfirm}
-          title="Delete Report"
-          message="Are you sure you want to delete this report? This action cannot be undone."
-          confirmText="Delete"
-          type="danger"
-        />
-
+    <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6 lg:p-8">
+      <div className="max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1f4a6e]">
-            Patient Screening Records
-          </h1>
-          <p className="text-slate-500 mt-2 text-sm md:text-base">
-            Search and manage cardiovascular risk screening data
-          </p>
+        <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1e4a6b]">
+              Patient Records
+            </h1>
+            <p className="text-sm md:text-base text-gray-600 mt-1">
+              Manage and view all patient history
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={exportAllReports}
+              className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm md:text-base font-medium text-gray-700"
+            >
+              <Download size={18} />
+              Export
+            </button>
+            <button
+              onClick={() => window.location.href = '?tab=admin'}
+              className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg transition text-sm md:text-base font-semibold shadow-md"
+            >
+              <UserPlus size={18} />
+              Add Patient
+            </button>
+          </div>
         </div>
 
         {/* Error Alert */}
@@ -297,283 +282,293 @@ function Records({ searchQuery = '', setSearchQuery }) {
           />
         )}
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-10">
+        {/* Main Content */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Panel - Patient List */}
+          <div className={`${selectedReport ? 'lg:w-1/2' : 'w-full'} transition-all duration-300`}>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+              {/* Search and Filters */}
+              <div className="space-y-4 mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by Patient Name or ID..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base"
+                  />
+                </div>
 
-          {/* Search Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Risk Category
-              </label>
-              <select
-                value={searchCategory}
-                onChange={(e) => setSearchCategory(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#1f4a6e] focus:ring-2 focus:ring-[#1f4a6e]/30 outline-none transition bg-white"
-              >
-                <option value="">All Categories</option>
-                <option value="Low Risk">Low Risk</option>
-                <option value="Moderate Risk">Moderate Risk</option>
-                <option value="High Risk">High Risk</option>
-              </select>
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                    className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base bg-white"
+                  >
+                    <option value="">All Risks</option>
+                    <option value="Low Risk">Low Risk</option>
+                    <option value="Moderate Risk">Moderate Risk</option>
+                    <option value="High Risk">High Risk</option>
+                  </select>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Report ID
-              </label>
-              <input
-                type="text"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                placeholder="Enter Report ID"
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#1f4a6e] focus:ring-2 focus:ring-[#1f4a6e]/30 outline-none transition"
-              />
-            </div>
-
-            <div className="flex items-end">
-              <button onClick={handleSearch} className="bg-[#e74c3c] hover:bg-[#c0392b] text-white px-6 py-3 rounded-xl w-full text-center text-sm font-medium transition">
-                Search
-              </button>
-            </div>
-          </div>
-
-          {/* Table - Desktop View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse">
-
-              <thead>
-                <tr className="bg-slate-100 text-[#1f4a6e] text-sm uppercase tracking-wide">
-                  <th className="px-6 py-4 text-left">Report ID</th>
-                  <th className="px-6 py-4 text-left">Age</th>
-                  <th className="px-6 py-4 text-left">Gender</th>
-                  <th className="px-6 py-4 text-left">Risk %</th>
-                  <th className="px-6 py-4 text-left">Category</th>
-                  <th className="px-6 py-4 text-left">Date</th>
-                  <th className="px-6 py-4 text-left">Action</th>
-                </tr>
-              </thead>
-
-              <tbody className="text-slate-700">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center">
-                      <LoadingSpinner className="mx-auto" />
-                      <p className="mt-4 text-slate-500">Loading reports...</p>
-                    </td>
-                  </tr>
-                ) : reports.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8">
-                      <EmptyState
-                        icon="📋"
-                        title="No Reports Found"
-                        message="There are no screening reports matching your search criteria."
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  reports.map((report) => (
-                    <tr
-                      key={report._id}
-                      className="border-b border-slate-200 hover:bg-slate-50 transition"
-                    >
-                      <td className="px-6 py-4 font-medium text-xs">{report._id?.slice(-8).toUpperCase()}</td>
-                      <td className="px-6 py-4">{report.visitId?.patientData?.age || 'N/A'}</td>
-                      <td className="px-6 py-4">{report.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</td>
-                      <td className="px-6 py-4">{report.prediction?.risk_probability != null ? Math.round(report.prediction.risk_probability * 100) + '%' : 'N/A'}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-4 py-1.5 rounded-full text-xs font-medium text-white ${getCategoryBadge(report.prediction?.risk_category)}`}
-                        >
-                          {report.prediction?.risk_category || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{formatDate(report.createdAt)}</td>
-                      <td className="px-6 py-4 flex gap-2">
-                        <button onClick={() => handleView(report)} className="bg-[#1f4a6e] hover:bg-[#163854] text-white px-5 py-2 rounded-lg text-sm font-medium transition">
-                          View
-                        </button>
-                        <button onClick={() => handleDeleteClick(report._id)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-
-            </table>
-          </div>
-
-          {/* Cards - Mobile View */}
-          <div className="md:hidden space-y-4">
-            {loading ? (
-              <div className="text-center py-8">
-                <LoadingSpinner className="mx-auto" />
-                <p className="mt-4 text-slate-500 text-sm">Loading reports...</p>
+                  <select
+                    value={genderFilter}
+                    onChange={(e) => setGenderFilter(e.target.value)}
+                    className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base bg-white"
+                  >
+                    <option value="">All Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
               </div>
-            ) : reports.length === 0 ? (
-              <EmptyState
-                icon="📋"
-                title="No Reports Found"
-                message="There are no screening reports matching your search criteria."
-              />
-            ) : (
-              reports.map((report) => (
-                <div key={report._id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">Report ID</p>
-                      <p className="font-bold text-sm text-slate-800">{report._id?.slice(-8).toUpperCase()}</p>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getCategoryBadge(report.prediction?.risk_category)}`}
-                    >
-                      {report.prediction?.risk_category || 'N/A'}
-                    </span>
+
+              {/* Patient Count */}
+              <p className="text-sm text-gray-600 mb-4">
+                Showing <span className="font-semibold">{filteredReports.length}</span> of{' '}
+                <span className="font-semibold">{reports.length}</span> patients
+              </p>
+
+              {/* Patient List */}
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {loading ? (
+                  <div className="text-center py-12">
+                    <LoadingSpinner className="mx-auto" />
+                    <p className="mt-4 text-gray-500">Loading patients...</p>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-500">Age</p>
-                      <p className="font-semibold text-slate-800">{report.visitId?.patientData?.age || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Gender</p>
-                      <p className="font-semibold text-slate-800">{report.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Risk %</p>
-                      <p className="font-semibold text-slate-800">{report.prediction?.risk_probability != null ? Math.round(report.prediction.risk_probability * 100) + '%' : 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Date</p>
-                      <p className="font-semibold text-slate-800">{formatDate(report.createdAt)}</p>
+                ) : filteredReports.length === 0 ? (
+                  <EmptyState
+                    
+                    title="No Patients Found"
+                    message="No patients match your search criteria."
+                  />
+                ) : (
+                  filteredReports.map((report, index) => {
+                    const patientData = report.visitId?.patientData || {};
+                    const riskScore = report.prediction?.risk_probability 
+                      ? Math.round(report.prediction.risk_probability * 100) 
+                      : 0;
+                    const isSelected = selectedReport?._id === report._id;
+
+                    return (
+                      <div
+                        key={report._id}
+                        onClick={() => setSelectedReport(report)}
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
+                          isSelected 
+                            ? 'border-cyan-500 bg-cyan-50' 
+                            : 'border-gray-200 hover:border-cyan-300'
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gradient-to-br from-[#2c5f7c] to-[#1a3f54] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          {getInitials(index)}
+                        </div>
+
+                        {/* Patient Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate">
+                              Patient {report.patientId}
+                            </h3>
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                              {report.patientId}
+                            </span>
+                          </div>
+                          <p className="text-xs md:text-sm text-gray-600">
+                            {patientData.age || 'N/A'} yrs • {patientData.gender === 1 ? 'Male' : 'Female'}
+                          </p>
+                        </div>
+
+                        {/* Risk Badge */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getRiskBadgeClass(report.prediction?.risk_category)}`}>
+                            {report.prediction?.risk_category?.split(' ')[0] || 'N/A'}
+                          </span>
+                          <span className="text-xs text-gray-500">Score: {riskScore}%</span>
+                        </div>
+
+                        {/* Arrow */}
+                        <ChevronRight 
+                          size={20} 
+                          className={`flex-shrink-0 ${isSelected ? 'text-cyan-600' : 'text-gray-400'}`} 
+                        />
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Patient Details */}
+          {selectedReport ? (
+            <div className="lg:w-1/2 w-full">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                {/* Close button for mobile */}
+                <button
+                  onClick={() => setSelectedReport(null)}
+                  className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
+                  Patient Details
+                </h2>
+
+                {/* Patient Info Section */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                      Basic Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoField label="Patient ID" value={selectedReport.patientId} />
+                      <InfoField 
+                        label="Age" 
+                        value={`${selectedReport.visitId?.patientData?.age || 'N/A'} years`} 
+                      />
+                      <InfoField 
+                        label="Gender" 
+                        value={selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'} 
+                      />
+                      <InfoField 
+                        label="Height" 
+                        value={`${selectedReport.visitId?.patientData?.height || 'N/A'} cm`} 
+                      />
+                      <InfoField 
+                        label="Weight" 
+                        value={`${selectedReport.visitId?.patientData?.weight || 'N/A'} kg`} 
+                      />
+                      <InfoField 
+                        label="BMI" 
+                        value={
+                          selectedReport.visitId?.patientData?.height && selectedReport.visitId?.patientData?.weight
+                            ? ((selectedReport.visitId.patientData.weight / Math.pow(selectedReport.visitId.patientData.height / 100, 2)).toFixed(1))
+                            : 'N/A'
+                        } 
+                      />
                     </div>
                   </div>
-                  
-                  <div className="flex gap-2 pt-3 border-t border-slate-200">
-                    <button 
-                      onClick={() => handleView(report)} 
-                      className="flex-1 bg-[#1f4a6e] hover:bg-[#163854] text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                      Vital Signs
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoField 
+                        label="Systolic BP" 
+                        value={`${selectedReport.visitId?.patientData?.ap_hi || 'N/A'} mmHg`} 
+                      />
+                      <InfoField 
+                        label="Diastolic BP" 
+                        value={`${selectedReport.visitId?.patientData?.ap_lo || 'N/A'} mmHg`} 
+                      />
+                      <InfoField 
+                        label="Cholesterol" 
+                        value={
+                          selectedReport.visitId?.patientData?.cholesterol === 1 
+                            ? 'Normal' 
+                            : selectedReport.visitId?.patientData?.cholesterol === 2 
+                            ? 'Above Normal' 
+                            : 'High'
+                        } 
+                      />
+                      <InfoField 
+                        label="Glucose" 
+                        value={
+                          selectedReport.visitId?.patientData?.gluc === 1 
+                            ? 'Normal' 
+                            : selectedReport.visitId?.patientData?.gluc === 2 
+                            ? 'Above Normal' 
+                            : 'High'
+                        } 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                      Risk Assessment
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-700">Risk Category</span>
+                        <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${getRiskBadgeClass(selectedReport.prediction?.risk_category)}`}>
+                          {selectedReport.prediction?.risk_category || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-700">Risk Score</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {selectedReport.prediction?.risk_probability 
+                            ? Math.round(selectedReport.prediction.risk_probability * 100) 
+                            : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top Risk Factors */}
+                  {selectedReport.prediction?.top_risk_factors?.length > 0 && (
+                    <div className="border-t pt-6">
+                      <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                        Top Risk Factors (SHAP Analysis)
+                      </h3>
+                      <div className="space-y-2">
+                        {selectedReport.prediction.top_risk_factors.slice(0, 5).map((factor, idx) => (
+                          <div 
+                            key={idx} 
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
+                            <span className="text-sm text-gray-700 capitalize">
+                              {factor.feature.replace(/_/g, ' ')}
+                            </span>
+                            <span className={`text-sm font-semibold ${
+                              factor.impact > 0 ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {factor.impact > 0 ? '+' : ''}{factor.impact.toFixed(4)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="border-t pt-6 flex gap-3">
+                    <button
+                      onClick={() => generatePDF(selectedReport)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-semibold transition shadow-md"
                     >
-                      View
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteClick(report._id)} 
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                    >
-                      Delete
+                      <Download size={18} />
+                      Download PDF
                     </button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Pagination */}
-          {!loading && pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-8">
-              <button
-                onClick={() => fetchReports(pagination.currentPage - 1)}
-                disabled={pagination.currentPage <= 1}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-slate-600">
-                Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalReports} total)
-              </span>
-              <button
-                onClick={() => fetchReports(pagination.currentPage + 1)}
-                disabled={!pagination.hasMore}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+              </div>
+            </div>
+          ) : (
+            <div className="hidden lg:flex lg:w-1/2 items-center justify-center">
+              <div className="text-center text-gray-400">
+                <p className="text-lg font-medium">Select a patient to view details</p>
+              </div>
             </div>
           )}
         </div>
-
-        {/* View Report Modal */}
-        {selectedReport && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-10 relative max-h-[90vh] overflow-y-auto">
-              <button onClick={() => setSelectedReport(null)} className="absolute top-5 right-6 text-gray-400 hover:text-black text-xl">✕</button>
-              <h2 className="text-2xl font-bold text-[#0a3d62] mb-6">Report Details</h2>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs text-slate-500">Risk Category</p>
-                    <p className={`text-lg font-bold ${selectedReport.prediction?.risk_category === 'High Risk' ? 'text-red-600' : selectedReport.prediction?.risk_category === 'Moderate Risk' ? 'text-orange-500' : 'text-green-600'}`}>{selectedReport.prediction?.risk_category || 'N/A'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs text-slate-500">Risk Probability</p>
-                    <p className="text-lg font-bold text-[#0a3d62]">{selectedReport.prediction?.risk_probability != null ? Math.round(selectedReport.prediction.risk_probability * 100) + '%' : 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-xl">
-                  <p className="text-xs text-slate-500 mb-2">Patient Data</p>
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div><span className="text-slate-500">Age:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.age || 'N/A'}</span></div>
-                    <div><span className="text-slate-500">Gender:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}</span></div>
-                    <div><span className="text-slate-500">Height:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.height || 'N/A'} cm</span></div>
-                    <div><span className="text-slate-500">Weight:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.weight || 'N/A'} kg</span></div>
-                    <div><span className="text-slate-500">BP:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.ap_hi || 'N/A'}/{selectedReport.visitId?.patientData?.ap_lo || 'N/A'}</span></div>
-                    <div><span className="text-slate-500">Cholesterol:</span> <span className="font-medium">{selectedReport.visitId?.patientData?.cholesterol === 1 ? 'Normal' : selectedReport.visitId?.patientData?.cholesterol === 2 ? 'Above Normal' : 'High'}</span></div>
-                  </div>
-                </div>
-
-                {selectedReport.prediction?.top_risk_factors?.length > 0 && (
-                  <div className="bg-slate-50 p-4 rounded-xl">
-                    <p className="text-xs text-slate-500 mb-2">SHAP Risk Factor Analysis</p>
-                    <p className="text-[10px] text-slate-400 mb-3">Positive values increase risk, negative values decrease risk</p>
-                    <ul className="space-y-2">
-                      {selectedReport.prediction.top_risk_factors.map((factor, i) => {
-                        const isPositive = factor.impact > 0;
-                        return (
-                          <li key={i} className="flex justify-between items-center">
-                            <span className="capitalize text-sm">{factor.feature.replace(/_/g, ' ')}</span>
-                            <span className={`font-bold text-sm ${isPositive ? 'text-red-600' : 'text-green-600'}`}>
-                              {isPositive ? '+' : ''}{factor.impact.toFixed(4)}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedReport.prediction?.recommendation && (
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                    <p className="text-xs text-blue-500 mb-1">AI Recommendation</p>
-                    <p className="text-sm text-blue-800">{selectedReport.prediction.recommendation}</p>
-                  </div>
-                )}
-
-                <p className="text-xs text-slate-400 text-right">Created: {formatDate(selectedReport.createdAt)}</p>
-
-                {/* Download PDF Button */}
-                <button
-                  onClick={() => generatePDF(selectedReport)}
-                  className="w-full bg-[#0a3d62] hover:bg-[#083050] text-white py-3 rounded-xl font-medium transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Download PDF Report
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </main>
   );
 }
+
+// Helper Component
+const InfoField = ({ label, value }) => (
+  <div>
+    <p className="text-xs text-gray-500 mb-1">{label}</p>
+    <p className="text-sm font-semibold text-gray-900">{value}</p>
+  </div>
+);
 
 export default Records;

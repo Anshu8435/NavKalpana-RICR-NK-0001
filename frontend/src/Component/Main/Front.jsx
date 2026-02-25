@@ -301,14 +301,7 @@ function Front() {
             </div>
           </div>
 
-      {/* New Scan Button */}
-      <button
-        onClick={() => navigate('/home/analytics')}
-        className="fixed bottom-8 right-8 bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-4 rounded-xl shadow-2xl hover:shadow-3xl hover:scale-105 transition-all font-bold flex items-center gap-2"
-      >
-        <span className="text-xl">+</span>
-        New Scan
-      </button>
+    
     </main>
   );
 }
