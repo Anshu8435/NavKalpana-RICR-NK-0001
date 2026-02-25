@@ -40,57 +40,61 @@ const fileFormat = combine(
   logFormat
 );
 
-// Create logs directory path
+// Create logs directory path (used only in development/local — Render has ephemeral disk)
 const logsDir = path.join(__dirname, '../../logs');
 
-// Daily rotate file transport for all logs
-const dailyRotateFileTransport = new DailyRotateFile({
-  filename: path.join(logsDir, 'application-%DATE%.log'),
-  datePattern: 'YYYY-MM-DD',
-  maxSize: '20m',
-  maxFiles: '14d',
-  format: fileFormat,
-});
+// Build transports based on environment
+const transports = [];
 
-// Daily rotate file transport for error logs only
-const errorRotateFileTransport = new DailyRotateFile({
-  filename: path.join(logsDir, 'error-%DATE%.log'),
-  datePattern: 'YYYY-MM-DD',
-  maxSize: '20m',
-  maxFiles: '30d',
-  level: 'error',
-  format: fileFormat,
-});
+// In production (Render/cloud), rely only on console logging.
+// Render captures stdout/stderr automatically — file logs are lost on redeploy.
+if (process.env.NODE_ENV === 'production') {
+  transports.push(
+    new winston.transports.Console({
+      format: combine(
+        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        errors({ stack: true }),
+        winston.format.json() // structured JSON for cloud log aggregation
+      ),
+      level: 'info',
+    })
+  );
+} else {
+  // Development: file rotation + colorful console
+  const dailyRotateFileTransport = new DailyRotateFile({
+    filename: path.join(logsDir, 'application-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '14d',
+    format: fileFormat,
+  });
 
-// Create logger instance
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: fileFormat,
-  transports: [
-    dailyRotateFileTransport,
-    errorRotateFileTransport,
-  ],
-  // Don't exit on handled exceptions
-  exitOnError: false,
-});
+  const errorRotateFileTransport = new DailyRotateFile({
+    filename: path.join(logsDir, 'error-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
+    level: 'error',
+    format: fileFormat,
+  });
 
-// Add console transport in development
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
+  transports.push(dailyRotateFileTransport, errorRotateFileTransport);
+  transports.push(
     new winston.transports.Console({
       format: consoleFormat,
       level: 'debug',
     })
   );
-} else {
-  // In production, also log to console but with less verbosity
-  logger.add(
-    new winston.transports.Console({
-      format: consoleFormat,
-      level: 'info',
-    })
-  );
 }
+
+// Create logger instance
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: fileFormat,
+  transports,
+  // Don't exit on handled exceptions
+  exitOnError: false,
+});
 
 // Create a stream object for Morgan
 logger.stream = {

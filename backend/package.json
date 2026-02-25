@@ -36,6 +36,9 @@
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^4.7.1"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "nodemon": "^3.0.2"
   }

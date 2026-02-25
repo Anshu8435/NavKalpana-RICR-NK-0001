@@ -13,16 +13,32 @@ import requestLogger from './middleware/requestLogger.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import predictionRoutes from './modules/prediction/prediction.routes.js';
 
-const app = express(); 
+const app = express();
+
+// Trust proxy - required for Render/Heroku (reverse proxy) so rate limiter & req.ip work correctly
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 connectDB();
 
 app.use(helmet());
-app.use(mongoSanitize()); 
- 
+app.use(mongoSanitize());
 
-const corsOptions = { 
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// CORS - support multiple origins via comma-separated ALLOWED_ORIGINS env var
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : [process.env.FRONTEND_URL || 'http://localhost:5173'];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -41,12 +57,12 @@ app.use('/api', apiLimiter);
 
 
 app.get('/health', (req, res) => {
-  logger.debug('Health check endpoint accessed');
   res.status(200).json({
     success: true,
     message: 'CardioShield AI API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
   });
 });
 
