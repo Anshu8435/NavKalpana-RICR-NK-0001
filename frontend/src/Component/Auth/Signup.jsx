@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 function Signup() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -85,17 +86,13 @@ function Signup() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/register', {
-        name: formData.fullName,
-        email: formData.email,
-        password: formData.password,
-      });
+      const result = await signup(formData.fullName, formData.email, formData.password);
 
-      if (response.data.success) {
+      if (result.success) {
         // Check if token is returned (auto-verified) or email verification required
-        if (response.data.data && response.data.data.token) {
+        if (result.data.data && result.data.data.token) {
           // Auto-verified user (development mode)
-          const { token, user } = response.data.data;
+          const { token, user } = result.data.data;
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(user));
           

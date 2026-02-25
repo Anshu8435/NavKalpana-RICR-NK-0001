@@ -109,10 +109,10 @@ function Registration() {
   };
 
   return (
-    <div className="flex-1 bg-gray-100 p-6 lg:p-10 ">
+    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-8">
       
       {/* MAIN CONTAINER FULL WIDTH */}
-      <div className="w-full">
+      <div className="w-full max-w-6xl mx-auto">
         
         {/* CARD */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 lg:p-12">
@@ -282,7 +282,7 @@ function Registration() {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

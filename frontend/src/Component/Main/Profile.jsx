@@ -1,36 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { Settings } from "lucide-react";
-import api from "../../utils/api";
+import { User, Shield, Edit2, Lock } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { authService } from "../../services/apiService";
+import { LoadingButton, PageLoading } from "../../components/Loading";
+import { Alert } from "../../components/Alert";
 
 const Profile = () => {
-  const [openModal, setOpenModal] = useState(false);
-  const [step, setStep] = useState(1);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, updateUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('contact');
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [openPasswordModal, setOpenPasswordModal] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
   const [editData, setEditData] = useState({ name: '', phoneNumber: '', gender: '' });
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get('/auth/me');
-        if (response.data.success) {
-          setUser(response.data.user);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-      } catch (err) {
-        console.error('Error fetching profile:', err);
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try { setUser(JSON.parse(storedUser)); } catch {}
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (user) {
+      setEditData({
+        name: user.name || '',
+        phoneNumber: user.phoneNumber || '',
+        gender: user.gender || '',
+      });
+    }
+  }, [user]);
 
   const getUserInitial = () => {
     if (user?.name) return user.name.charAt(0).toUpperCase();
@@ -44,8 +39,7 @@ const Profile = () => {
       gender: user?.gender || '',
     });
     setSaveMessage('');
-    setOpenModal(true);
-    setStep(1);
+    setOpenEditModal(true);
   };
 
   const handleEditChange = (e) => {
@@ -53,21 +47,63 @@ const Profile = () => {
     setEditData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleSaveProfile = async () => {
     setSaveLoading(true);
     setSaveMessage('');
     try {
-      const response = await api.put('/auth/profile', editData);
-      if (response.data.success) {
-        setUser(response.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+      const response = await authService.updateProfile(editData);
+      if (response.success) {
+        updateUser(response.user);
+        setMessageType('success');
         setSaveMessage('Profile updated successfully!');
-        setTimeout(() => { setOpenModal(false); setSaveMessage(''); }, 1500);
+        setTimeout(() => { setOpenEditModal(false); setSaveMessage(''); }, 1500);
       }
     } catch (err) {
-      setSaveMessage(err.response?.data?.message || 'Failed to update profile');
+      console.error('Profile update error:', err);
+      setMessageType('error');
+      setSaveMessage(err.response?.data?.message || err.message || 'Failed to update profile');
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setMessageType('error');
+      setSaveMessage('Passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      setMessageType('error');
+      setSaveMessage('Password must be at least 8 characters');
+      return;
+    }
+
+    setPasswordLoading(true);
+    setSaveMessage('');
+    try {
+      const response = await authService.changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
+      if (response.success) {
+        setMessageType('success');
+        setSaveMessage('Password changed successfully!');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => { setOpenPasswordModal(false); setSaveMessage(''); }, 1500);
+      }
+    } catch (err) {
+      console.error('Password change error:', err);
+      setMessageType('error');
+      setSaveMessage(err.response?.data?.message || err.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -76,225 +112,329 @@ const Profile = () => {
     return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-        <p className="text-slate-500 text-lg">Loading profile...</p>
-      </div>
-    );
+  const tabs = [
+    { id: 'contact', label: 'Contact Info', icon: User },
+    { id: 'security', label: 'Security', icon: Shield },
+  ];
+
+  if (!user) {
+    return <PageLoading message="Loading profile..." />;
   }
 
   return (
-    <>
-      <div className="w-full min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
-        {/* FULL WIDTH WRAPPER */}
-        <div className="w-full px-8 lg:px-16 py-10">
-          {/* MAIN CARD */}
-          <div className="w-full bg-white rounded-3xl shadow-2xl p-12">
-            {/* HEADER */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 border-b border-slate-200 pb-10 mb-10">
-              <div className="flex items-center gap-6">
-                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#0a3d62] to-[#3c6382] text-white flex items-center justify-center text-4xl font-bold shadow-lg">
-                  {getUserInitial()}
-                </div>
-
-                <div>
-                  <h2 className="text-3xl font-bold text-[#0a3d62]">
-                    {user?.name || 'Doctor'}
-                  </h2>
-                  <p className="text-slate-600 mt-2 text-lg">
-                    {user?.email || ''}
-                  </p>
-
-                  <span className="inline-block mt-4 bg-blue-50 text-[#0a3d62] px-5 py-1.5 rounded-full text-sm font-medium shadow-sm">
-                    Cardiology | Preventive Heart Care | AI Cardiac Analytics
-                  </span>
-                </div>
+    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
+      <div className="w-full max-w-6xl mx-auto">
+        {/* MAIN CARD */}
+        <div className="w-full bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 lg:p-12">
+          {/* HEADER */}
+          <div className="flex flex-col gap-6 md:gap-8 border-b border-gray-200 pb-6 md:pb-8 mb-6 md:mb-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-6">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-[#2c5f7c] to-[#3d7a99] text-white flex items-center justify-center text-2xl md:text-3xl font-bold shadow-lg">
+                {getUserInitial()}
               </div>
 
-              <div className="flex items-center gap-4">
-                <button className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition shadow-sm">
-                  <Settings size={20} className="text-[#0a3d62]" />
-                </button>
+              <div className="text-center sm:text-left flex-1">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
+                  {user?.name || 'Doctor'}
+                </h2>
+                <p className="text-gray-600 mt-1 text-base md:text-lg break-all">
+                  {user?.email || ''}
+                </p>
+                <span className="inline-block mt-3 bg-blue-50 text-blue-700 px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-medium">
+                  Cardiology • Preventive Care • AI Analytics
+                </span>
+              </div>
+            </div>
 
+            <div className="flex justify-center sm:justify-start">
+              <button 
+                onClick={handleOpenEdit}
+                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold shadow-lg transition-all text-sm md:text-base"
+              >
+                <Edit2 size={18} />
+                Edit Profile
+              </button>
+            </div>
+          </div>
+
+          {/* TABS */}
+          <div className="flex gap-2 border-b border-gray-200 mb-6 md:mb-8 overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
                 <button
-                  onClick={handleOpenEdit}
-                  className="bg-[#ff6b4a] hover:bg-[#e85c3d] transition text-white px-7 py-3 rounded-xl font-medium shadow-lg"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 font-medium transition-all whitespace-nowrap text-sm md:text-base ${
+                    activeTab === tab.id
+                      ? 'text-cyan-600 border-b-2 border-cyan-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
-                  Edit Profile
+                  <Icon size={18} />
+                  {tab.label}
                 </button>
+              );
+            })}
+          </div>
+
+          {/* TAB CONTENT */}
+          <div className="min-h-[400px]">
+            {/* Contact Info Tab */}
+            {activeTab === 'contact' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
+                  <InfoField label="Full Name" value={user?.name || 'N/A'} />
+                  <InfoField label="Email Address" value={user?.email || 'N/A'} />
+                
+                  <InfoField 
+                    label="Gender" 
+                    value={user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'Not set'} 
+                  />
+                  <InfoField 
+                    label="Account Status" 
+                    value={
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        user?.isEmailVerified 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {user?.isEmailVerified ? '✓ Verified' : 'Not Verified'}
+                      </span>
+                    } 
+                  />
+                  <InfoField label="Member Since" value={formatDate(user?.createdAt)} />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* SUB NAV */}
-            <div className="flex gap-8 border-b border-slate-200 pb-6 mb-10 text-sm font-medium">
-              <button className="text-[#0a3d62] border-b-2 border-[#ff6b4a] pb-2">
-                Contact Info
-              </button>
-              <button className="text-slate-500 hover:text-[#0a3d62] transition">
-                Professional Info
-              </button>
-              <button className="text-slate-500 hover:text-[#0a3d62] transition">
-                Certifications
-              </button>
-              <button className="text-slate-500 hover:text-[#0a3d62] transition">
-                Security
-              </button>
-            </div>
+            {/* Security Tab */}
+            {activeTab === 'security' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Security Settings</h3>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+                  <div className="flex items-start gap-4">
+                    <Shield className="text-blue-600 mt-1" size={24} />
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-2">Account Security</h4>
+                      <p className="text-blue-700 text-sm">
+                        Keep your account secure by using a strong password.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* CONTENT GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-10">
-              <Info
-                label="Full Name"
-                value={user?.name || 'N/A'}
-              />
-              <Info label="Email" value={user?.email || 'N/A'} />
-              <Info label="Gender" value={user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'Not set'} />
-              <Info label="Phone Number" value={user?.phoneNumber || 'Not set'} />
-              <Info
-                label="Account Status"
-                value={user?.isEmailVerified ? 'Verified' : 'Not Verified'}
-              />
-              <Info label="Member Since" value={formatDate(user?.createdAt)} />
-
-              <div className="md:col-span-2">
-                <Info
-                  label="Research & Clinical Focus"
-                  value="AI-Based Early Cardiac Risk Detection, Preventive Cardiology, ECG Analytics & Predictive Monitoring"
-                />
+                <div className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md transition">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <Lock className="text-white" size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-800">Password</h4>
+                      <p className="text-sm text-gray-600">Change your account password</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setOpenPasswordModal(true)}
+                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-medium transition"
+                  >
+                    Change Password
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
-      {openModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-10 relative">
-            {/* CLOSE */}
+
+      {/* Edit Profile Modal */}
+      {openEditModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 relative">
             <button
-              onClick={() => setOpenModal(false)}
-              className="absolute top-5 right-6 text-gray-400 hover:text-black text-xl"
+              onClick={() => setOpenEditModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
             >
-              ✕
+              ×
             </button>
 
-            {/* STEP INDICATOR */}
-            <div className="flex items-center justify-center gap-6 mb-10">
-              <div
-                className={`px-4 py-1 rounded-full text-sm font-medium ${step === 1 ? "bg-[#0a3d62] text-white" : "bg-gray-200 text-gray-600"}`}
-              >
-                Step 1: Personal
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</h2>
+
+            {saveMessage && (
+              <Alert 
+                type={messageType} 
+                message={saveMessage} 
+                onClose={() => setSaveMessage('')}
+                className="mb-6"
+              />
+            )}
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={editData.name}
+                  onChange={handleEditChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Enter your full name"
+                />
               </div>
-              <div
-                className={`px-4 py-1 rounded-full text-sm font-medium ${step === 2 ? "bg-[#0a3d62] text-white" : "bg-gray-200 text-gray-600"}`}
-              >
-                Step 2: Additional
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={user?.email || ''}
+                  readOnly
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+
+            
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <select
+                  name="gender"
+                  value={editData.gender}
+                  onChange={handleEditChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
 
-            {saveMessage && (
-              <div className={`mb-6 p-3 rounded-xl text-sm text-center ${saveMessage.includes('success') ? 'bg-green-50 border border-green-300 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-                {saveMessage}
-              </div>
-            )}
-
-            {/* STEP 1 CONTENT */}
-            {step === 1 && (
-              <div>
-                <h2 className="text-2xl font-semibold text-[#0a3d62] mb-6">
-                  Personal Details
-                </h2>
-
-                <div className="space-y-5">
-                  <Input label="Full Name" name="name" value={editData.name} onChange={handleEditChange} />
-                  <div>
-                    <label className="text-sm text-slate-500">Email</label>
-                    <input
-                      type="text"
-                      value={user?.email || ''}
-                      readOnly
-                      className="w-full mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                    />
-                  </div>
-                  <Input label="Phone Number" name="phoneNumber" value={editData.phoneNumber} onChange={handleEditChange} />
-                </div>
-
-                <div className="flex justify-end mt-8">
-                  <button
-                    onClick={() => setStep(2)}
-                    className="bg-[#0a3d62] text-white px-6 py-2 rounded-xl hover:bg-[#08304d]"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2 CONTENT */}
-            {step === 2 && (
-              <div>
-                <h2 className="text-2xl font-semibold text-[#0a3d62] mb-6">
-                  Additional Information
-                </h2>
-
-                <div className="space-y-5">
-                  <div>
-                    <label className="text-sm text-slate-500">Gender</label>
-                    <select
-                      name="gender"
-                      value={editData.gender}
-                      onChange={handleEditChange}
-                      className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0a3d62] bg-white"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-between mt-8">
-                  <button
-                    onClick={() => setStep(1)}
-                    className="bg-gray-200 px-6 py-2 rounded-xl hover:bg-gray-300"
-                  >
-                    ← Back
-                  </button>
-
-                  <button
-                    onClick={handleSaveProfile}
-                    disabled={saveLoading}
-                    className="bg-[#ff6b4a] text-white px-6 py-2 rounded-xl hover:bg-[#e85c3d] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saveLoading ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => setOpenEditModal(false)}
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+              >
+                Cancel
+              </button>
+              <LoadingButton
+                onClick={handleSaveProfile}
+                loading={saveLoading}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-medium transition"
+              >
+                Save Changes
+              </LoadingButton>
+            </div>
           </div>
         </div>
       )}
-    </>
+
+      {/* Change Password Modal */}
+      {openPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 relative">
+            <button
+              onClick={() => {
+                setOpenPasswordModal(false);
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setSaveMessage('');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+            >
+              ×
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <Lock className="text-white" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Change Password</h2>
+            </div>
+
+            {saveMessage && (
+              <Alert 
+                type={messageType} 
+                message={saveMessage} 
+                onClose={() => setSaveMessage('')}
+                className="mb-6"
+              />
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter current password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter new password"
+                />
+                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => {
+                  setOpenPasswordModal(false);
+                  setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  setSaveMessage('');
+                }}
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+              >
+                Cancel
+              </button>
+              <LoadingButton
+                onClick={handleChangePassword}
+                loading={passwordLoading}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg font-medium transition"
+              >
+                Change Password
+              </LoadingButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 };
 
-const Info = ({ label, value }) => (
+
+// Helper Components
+const InfoField = ({ label, value }) => (
   <div>
-    <p className="text-sm text-slate-500 mb-2">{label}</p>
-    <p className="text-base font-semibold text-[#0a3d62]">{value}</p>
+    <p className="text-sm text-gray-500 mb-2 font-medium">{label}</p>
+    <p className="text-base font-semibold text-gray-800">{value}</p>
   </div>
 );
-const Input = ({ label, name, value, onChange }) => (
-  <div>
-    <label className="text-sm text-slate-500">{label}</label>
-    <input
-      type="text"
-      name={name}
-      value={value}
-      onChange={onChange}
-      className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0a3d62]"
-    />
-  </div>
-);
+
 export default Profile;
+

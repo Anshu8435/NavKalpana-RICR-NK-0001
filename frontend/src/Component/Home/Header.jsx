@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 
 function Header({ selectedtab, setselectedtab }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [logoutLoading, setLogoutLoading] = useState(false);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Error parsing user data:', err);
-      }
-    }
-  }, []);
 
   const getUserInitial = () => {
     if (user?.name) return user.name.charAt(0).toUpperCase();
@@ -31,16 +20,16 @@ function Header({ selectedtab, setselectedtab }) {
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
-      await api.post('/auth/logout');
-    } catch (err) {
-      console.error('Logout API error:', err);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Clear patient-specific data
       localStorage.removeItem('currentPatient');
       localStorage.removeItem('latestPrediction');
       localStorage.removeItem('registeredPatients');
-      navigate('/login');
+      
+      // Use auth context logout
+      logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+      setLogoutLoading(false);
     }
   };
 
