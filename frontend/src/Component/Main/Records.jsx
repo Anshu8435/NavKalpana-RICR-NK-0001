@@ -537,6 +537,50 @@ function Records({ searchQuery = '', setSearchQuery }) {
                     </div>
                   )}
 
+                  {/* AI Recommendations */}
+                  {(() => {
+                    const recs = selectedReport.prediction?.recommendations ||
+                                 selectedReport.mlResponse?.recommendations || [];
+                    return recs.length > 0 ? (
+                      <div className="border-t pt-6">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+                          AI Recommendations
+                        </h3>
+                        <div className="space-y-3">
+                          {recs.slice(0, 4).map((rec, idx) => {
+                            const sevColors = {
+                              high: 'border-l-red-400 bg-red-50',
+                              moderate: 'border-l-yellow-400 bg-yellow-50',
+                              low: 'border-l-green-400 bg-green-50',
+                            };
+                            return (
+                              <div
+                                key={idx}
+                                className={`border-l-4 ${sevColors[rec.severity] || 'border-l-blue-400 bg-blue-50'} rounded-lg p-3`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-base">{rec.icon}</span>
+                                  <span className="text-sm font-semibold text-gray-900">{rec.title}</span>
+                                </div>
+                                <p className="text-xs text-gray-600 mb-2">{rec.description}</p>
+                                {rec.actions?.length > 0 && (
+                                  <ul className="space-y-1">
+                                    {rec.actions.slice(0, 3).map((a, i) => (
+                                      <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
+                                        <span className="text-cyan-600 mt-0.5">&#10003;</span>
+                                        <span>{a}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Action Buttons */}
                   <div className="border-t pt-6 flex gap-3">
                     <button

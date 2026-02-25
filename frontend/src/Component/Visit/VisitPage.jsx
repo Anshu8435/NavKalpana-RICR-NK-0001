@@ -25,70 +25,49 @@ function VisitPage() {
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-white shadow-lg py-4"
-            : "bg-white py-5"
+            ? "bg-gradient-to-r from-blue-600 to-cyan-500 shadow-lg py-4"
+            : "bg-gradient-to-r from-blue-600 to-cyan-500 py-5"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="CardioShield Logo" className="h-12 w-auto" />
-            <span
-              className={`text-2xl font-bold tracking-tight ${
-                scrolled ? "text-blue-100" : "text-white"
-              }`}
-            >
+            <span className="text-xl md:text-2xl font-bold tracking-tight text-white">
               CardioShield AI
             </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
             <button
               onClick={() => scrollToSection("about")}
-              className={`font-medium transition-colors ${
-                scrolled
-                  ? "text-gray-100 hover:text-blue-600"
-                  : "text-white hover:text-blue-200"
-              }`}
+              className="font-medium text-white hover:text-blue-100 transition-colors"
             >
               About
             </button>
             <button
               onClick={() => scrollToSection("features")}
-              className={`font-medium transition-colors ${
-                scrolled
-                  ? "text-gray-100 hover:text-blue-600"
-                  : "text-white hover:text-blue-200"
-              }`}
+              className="font-medium text-white hover:text-blue-100 transition-colors"
             >
               Features
             </button>
             <button
               onClick={() => scrollToSection("how-it-works")}
-              className={`font-medium transition-colors ${
-                scrolled
-                  ? "text-gray-100 hover:text-blue-600"
-                  : "text-white hover:text-blue-200"
-              }`}
+              className="font-medium text-white hover:text-blue-100 transition-colors"
             >
               How It Works
             </button>
          
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <button
               onClick={() => navigate("/login")}
-              className={`px-6 py-2.5 rounded-lg font-semibold transition-all ${
-                scrolled
-                  ? "text-blue-900 hover:bg-blue-50"
-                  : "text-white hover:bg-white/10"
-              }`}
+              className="px-4 md:px-6 py-2 md:py-2.5 rounded-lg font-semibold text-white hover:bg-white/10 transition-all text-sm md:text-base"
             >
               Login
             </button>
             <button
               onClick={() => navigate("/signup")}
-              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:from-red-600 hover:to-red-700 transition-all"
+              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:from-red-600 hover:to-red-700 transition-all text-sm md:text-base"
             >
               Get Started
             </button>
@@ -104,7 +83,7 @@ function VisitPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="inline-block">
-                <span className="bg-blue-500/30 text-blue-500 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm">
+                <span className="bg-blue-50 text-blue-500 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm">
                   🏥 AI-Powered Cardiovascular Risk Assessment
                 </span>
               </div>

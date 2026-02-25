@@ -19,7 +19,6 @@ function Sidebar({ selectedtab, setselectedtab }) {
     <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-[#2c5f7c] to-[#1a3f54] text-white transition-all duration-300 flex flex-col min-h-screen`}>
       {/* Logo Section */}
       <div className="p-6 flex items-center gap-3 border-b border-white/10">
-        <img src={logo} alt="Logo" className="w-10 h-10" />
         {sidebarOpen && (
           <div>
             <h1 className="font-bold text-lg">CardioShield</h1>

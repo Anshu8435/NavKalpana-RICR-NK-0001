@@ -1,6 +1,5 @@
 // Login.jsx
 import React, { useState } from 'react';
-import imagee from "../../assets/logo3.jpg";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/apiService';
@@ -95,18 +94,7 @@ function Login() {
             "
           />
 
-          {/* Logo - sahi syntax */}
-          <img
-            src={imagee}
-            alt="CardioShield AI"
-            className="
-              h-20 md:h-28 w-auto mb-6 
-
-            
-              transition-shadow duration-300
-            "
-            style={{ background: 'transparent' }} // extra safety ke liye (mostly nahi chahiye agar PNG transparent hai)
-          />
+          
 
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center z-10">
             CardioShield AI

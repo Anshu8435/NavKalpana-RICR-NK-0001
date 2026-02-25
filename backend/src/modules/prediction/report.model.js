@@ -50,6 +50,10 @@ const reportSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
+      recommendations: {
+        type: [mongoose.Schema.Types.Mixed],
+        default: [],
+      },
     },
     mlResponse: {
       type: mongoose.Schema.Types.Mixed,

@@ -3,6 +3,7 @@ import numpy as np
 from app.services.model_loader import model
 from app.preprocessing.feature_engineering import engineer_features
 from app.utils.risk_utils import risk_category, confidence_interval
+from app.utils.recommendation_engine import generate_recommendations
 
 # Column order must match training: after dropping 'id' and 'cardio' from original CSV
 # Original CSV order: id, age, gender, height, weight, ap_hi, ap_lo, cholesterol, gluc, smoke, alco, active, cardio
@@ -130,11 +131,20 @@ def run_prediction(input_data: dict):
         top_features = sorted(shap_dict.items(), key=lambda x: abs(float(x[1])), reverse=True)[:3]
         top_risk_factors = [{"feature": f, "impact": round(float(v), 4)} for f, v in top_features]
     
+    # Generate personalised recommendations
+    recommendations = generate_recommendations(
+        patient_data=input_data,
+        risk_category=category,
+        risk_probability=float(prob),
+        top_risk_factors=top_risk_factors,
+    )
+
     result = {
         "risk_probability": round(float(prob), 4),
         "risk_category": category,
         "confidence_interval": [ci_lower, ci_upper],
         "top_risk_factors": top_risk_factors,
-        "recommendation": "Consult cardiology specialist if high risk."
+        "recommendation": "Consult cardiology specialist if high risk.",
+        "recommendations": recommendations,
     }
     return result
