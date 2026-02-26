@@ -149,95 +149,7 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
     doc.save(`CardioShield_Patient_Records_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generatePDF = (report) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 10;
 
-    // Header
-    doc.setFillColor(44, 95, 124);
-    doc.rect(0, 0, pageWidth, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CardioShield AI', pageWidth / 2, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Cardiovascular Risk Assessment Report', pageWidth / 2, 30, { align: 'center' });
-
-    y = 55;
-
-    // Patient Info
-    doc.setTextColor(44, 95, 124);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Patient Information', 20, y);
-
-    y += 10;
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, y, pageWidth - 20, y);
-
-    y += 12;
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-
-    const patientData = report.visitId?.patientData || {};
-    const patientInfo = [
-      ['Patient ID', report.patientId],
-      ['Age', `${patientData.age || 'N/A'} years`],
-      ['Gender', patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'],
-      ['Height', `${patientData.height || 'N/A'} cm`],
-      ['Weight', `${patientData.weight || 'N/A'} kg`],
-      ['Blood Pressure', `${patientData.ap_hi || 'N/A'}/${patientData.ap_lo || 'N/A'} mmHg`],
-    ];
-
-    patientInfo.forEach(([label, value], i) => {
-      const xPos = i % 2 === 0 ? 25 : pageWidth / 2;
-      if (i % 2 === 0 && i > 0) y += 12;
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${label}:`, xPos, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(value, xPos + 50, y);
-    });
-
-    y += 25;
-
-    // Risk Assessment
-    doc.setTextColor(44, 95, 124);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Risk Assessment', 20, y);
-
-    y += 10;
-    doc.line(20, y, pageWidth - 20, y);
-
-    y += 12;
-    doc.setFontSize(11);
-    doc.setTextColor(60, 60, 60);
-
-    const riskScore = report.prediction?.risk_probability 
-      ? Math.round(report.prediction.risk_probability * 100) 
-      : 0;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Risk Category:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(report.prediction?.risk_category || 'N/A', 80, y);
-
-    y += 10;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Risk Score:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${riskScore}%`, 80, y);
-
-    // Footer
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('CardioShield AI - For informational purposes only. Consult a healthcare professional.', pageWidth / 2, 280, { align: 'center' });
-
-    doc.save(`Patient_${report.patientId}_Report.pdf`);
-  };
 
   return (
     <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6 lg:p-8">
@@ -601,13 +513,7 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
                       <ChevronRight size={18} />
                       View Full Report
                     </button>
-                    <button
-                      onClick={() => generatePDF(selectedReport)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-semibold transition shadow-md"
-                    >
-                      <Download size={18} />
-                      Download PDF
-                    </button>
+                   
                   </div>
                 </div>
               </div>

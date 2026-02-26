@@ -27,6 +27,23 @@ const createTransporter = () => {
   }
 };
 
+// Verifies transporter connectivity without throwing in production startup.
+const verifyTransporter = async () => {
+  try {
+    const transporter = createTransporter();
+    // set a reasonable timeout to avoid very long hangs
+    transporter.options = transporter.options || {};
+    transporter.options.connectionTimeout = transporter.options.connectionTimeout || 10000;
+    await transporter.verify();
+    logger.info('Email transporter verified successfully');
+    return true;
+  } catch (err) {
+    logger.error('Email transporter verification failed', { error: err.message });
+    // Do not throw to prevent crashing the live site, but surface the problem in logs
+    return false;
+  }
+};
+
 const sendEmail = async (options) => {
   try {
     logger.debug('Preparing to send email', {
@@ -71,3 +88,4 @@ const sendEmail = async (options) => {
 };
 
 export default sendEmail;
+export { verifyTransporter, createTransporter };

@@ -100,7 +100,7 @@ function Signup() {
           navigate('/home');
         } else {
           // Email verification required
-          alert(response.data.message || 'Registration successful! Please check your email to verify your account.');
+          alert(result.data.message || 'Registration successful! Please check your email to verify your account.');
           navigate('/login');
         }
       }
