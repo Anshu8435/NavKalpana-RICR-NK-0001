@@ -11,6 +11,7 @@ import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import requestLogger from './middleware/requestLogger.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
+import { verifyTransporter } from './config/email.js';
 import predictionRoutes from './modules/prediction/prediction.routes.js';
 
 const app = express();
@@ -98,6 +99,13 @@ CardioShield AI API running in ${NODE_ENV} mode on port ${PORT}
     environment: NODE_ENV,
     nodeVersion: process.version,
   });
+});
+
+// Verify email transporter asynchronously at startup (non-blocking)
+verifyTransporter().then((ok) => {
+  if (!ok) {
+    logger.warn('Email transporter verification failed at startup — emails may not be delivered');
+  }
 });
 
 process.on('unhandledRejection', (err) => {
