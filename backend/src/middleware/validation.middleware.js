@@ -120,7 +120,7 @@ const authValidation = {
     newPassword: Joi.string()
       .min(8)
       .max(128)
-      .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]'))
+      .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$'))
       .required()
       .messages({
         'string.min': 'New password must be at least 8 characters',
