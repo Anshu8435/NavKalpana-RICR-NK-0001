@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function Registration() {
+function Registration({ setselectedtab }) {
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -105,7 +105,11 @@ function Registration() {
 
   const handleProceedToAnalysis = () => {
     // Navigate to Analysis tab with patient ID pre-filled
-    navigate('/home?tab=analysis');
+    if (setselectedtab) {
+      setselectedtab('analysis');
+    } else {
+      navigate('/home?tab=analysis');
+    }
   };
 
   return (

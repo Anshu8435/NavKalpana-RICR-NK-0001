@@ -315,4 +315,57 @@ def generate_recommendations(
     recs.extend(_activity_recommendations(patient_data.get("active", 1)))
     recs.extend(_age_recommendations(patient_data.get("age", 0)))
 
+    # 3. Add specialist referral recommendation if moderate or high risk
+    if risk_category in ("High Risk", "Moderate Risk"):
+        referral_rec = _referral_recommendation(risk_category, risk_probability, patient_data)
+        if referral_rec:
+            recs.extend(referral_rec)
+
+    return recs
+
+
+def _referral_recommendation(risk_cat: str, risk_prob: float, patient_data: dict):
+    """Generate a referral recommendation card based on risk and contributing factors."""
+    recs = []
+    specialists = []
+    tests = []
+
+    if risk_cat == "High Risk":
+        specialists.append("Cardiologist")
+        tests.extend(["ECG", "2D Echocardiogram", "Stress Test", "Complete Lipid Profile"])
+        timeline = "within 7 days"
+    else:
+        specialists.append("General Physician")
+        tests.extend(["Complete Lipid Profile", "Fasting Blood Sugar"])
+        timeline = "within 30 days"
+
+    # Add endocrinologist if glucose is elevated
+    gluc = patient_data.get("gluc", 1)
+    if gluc >= 2:
+        specialists.append("Endocrinologist")
+        if "HbA1c Test" not in tests:
+            tests.append("HbA1c Test")
+
+    # Add nutritionist if BMI >= 30
+    weight = patient_data.get("weight", 0)
+    height = patient_data.get("height", 1)
+    if height > 0:
+        bmi = weight / ((height / 100) ** 2)
+        if bmi >= 30:
+            specialists.append("Nutritionist / Dietitian")
+
+    specialist_str = ", ".join(specialists)
+    tests_str = ", ".join(tests)
+
+    recs.append({
+        "category": "Specialist Referral",
+        "severity": "high" if risk_cat == "High Risk" else "moderate",
+        "title": f"Consult: {specialist_str}",
+        "description": f"Based on your risk profile, schedule an appointment {timeline}. Recommended tests: {tests_str}.",
+        "actions": [
+            f"Book appointment with {s}" for s in specialists
+        ] + [
+            f"Get tested: {t}" for t in tests
+        ],
+    })
     return recs

@@ -203,8 +203,8 @@ const getUserStatistics = async (userId) => {
       Report.find({ userId })
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('visitId', 'patientData.age patientData.gender createdAt')
-        .select('prediction.risk_category prediction.risk_probability createdAt'),
+        .populate('visitId', 'patientData createdAt')
+        .select('-__v'),
     ]);
 
     const riskStats = {

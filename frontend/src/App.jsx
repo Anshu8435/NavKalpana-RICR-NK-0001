@@ -39,24 +39,3 @@ function App() {
 }
 
 export default App;
-
-{
-  /* <VisitPage></VisitPage> */
-}
-{
-  /* <Analatics></Analatics> */
-}
-// <HomePage></HomePage>
-{
-  /* <Login></Login> */
-}
-
-{
-  /* <Signup></Signup> */
-}
-{
-  /* <Records></Records> */
-}
-{
-  /* <Registration></Registration> */
-}

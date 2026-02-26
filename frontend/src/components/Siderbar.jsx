@@ -50,7 +50,7 @@ function Sidebar({ selectedtab, setselectedtab }) {
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="p-4 text-center text-blue-200 hover:bg-white/5 border-t border-white/10"
       >
-        {sidebarOpen ? <ArrowBigRight /> : <ArrowBigRight className="rotate-180" />}
+        {sidebarOpen ? <ArrowBigRight className="rotate-180" /> : <ArrowBigRight />}
       </button>
     </aside>
   );

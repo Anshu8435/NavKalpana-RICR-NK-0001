@@ -73,7 +73,7 @@ function Header({ setselectedtab, searchQuery, setSearchQuery }) {
             </div>
             <div className="hidden lg:block">
               <p className="font-semibold text-sm">{getUserDisplayName()}</p>
-              <p className="text-xs text-blue-100">Senior Cardiologist</p>
+              <p className="text-xs text-blue-100">{user?.role === 'admin' ? 'Administrator' : user?.role === 'doctor' ? 'Senior Cardiologist' : 'Healthcare Professional'}</p>
             </div>
             <button 
               onClick={handleLogout} 

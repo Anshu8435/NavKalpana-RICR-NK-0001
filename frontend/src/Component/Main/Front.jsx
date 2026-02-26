@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../../components/Loading";
 import { Alert } from "../../components/Alert";
 
-function Front() {
+function Front({ setselectedtab }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
@@ -42,6 +42,13 @@ function Front() {
 
   const criticalAlerts = highRisk;
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -63,7 +70,7 @@ function Front() {
       {/* Greeting Section */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-          Good Morning, {user?.name?.split(' ')[0] || 'Doctor'}
+          {getGreeting()}, {user?.name?.split(' ')[0] || 'Doctor'}
         </h1>
         <p className="text-sm md:text-base text-gray-600">
           You have <span className="text-red-600 font-semibold">{criticalAlerts} critical alerts</span> pending.
@@ -88,7 +95,6 @@ function Front() {
               <div className="relative">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 text-sm font-medium">Total Patients</span>
-                  <span className="text-green-600 text-xs font-semibold bg-green-50 px-2 py-1 rounded">+12%</span>
                 </div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {loading ? '...' : totalReports.toLocaleString()}
@@ -102,7 +108,6 @@ function Front() {
               <div className="relative">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 text-sm font-medium">Critical Alerts</span>
-                  <span className="text-red-600 text-xs font-semibold bg-red-50 px-2 py-1 rounded">+5%</span>
                 </div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {loading ? '...' : criticalAlerts}
@@ -116,7 +121,6 @@ function Front() {
               <div className="relative">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 text-sm font-medium">Avg Risk Score</span>
-                  <span className="text-green-600 text-xs font-semibold bg-green-50 px-2 py-1 rounded">-3%</span>
                 </div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {loading ? '...' : avgRiskScore + '%'}
@@ -130,7 +134,6 @@ function Front() {
               <div className="relative">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 text-sm font-medium">Reports Ready</span>
-                  <span className="text-green-600 text-xs font-semibold bg-green-50 px-2 py-1 rounded">+18%</span>
                 </div>
                 <h3 className="text-4xl font-bold text-gray-900 mb-1">
                   {loading ? '...' : totalReports}
@@ -149,7 +152,7 @@ function Front() {
                   <p className="text-sm text-gray-500">Latest cardiovascular risk assessments</p>
                 </div>
                 <button 
-                  onClick={() => navigate('/home/records')}
+                  onClick={() => setselectedtab('reports')}
                   className="text-red-500 hover:text-red-600 font-semibold text-sm"
                 >
                   View All
@@ -184,7 +187,7 @@ function Front() {
                       recentReports.slice(0, 5).map((report, index) => {
                         const patientData = report.visitId?.patientData || {};
                         const age = patientData.age || 'N/A';
-                        const gender = patientData.gender === 1 ? 'Male' : 'Female';
+                        const gender = patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A';
                         const riskCategory = report.prediction?.risk_category || 'N/A';
                         const riskProb = report.prediction?.risk_probability 
                           ? Math.round(report.prediction.risk_probability * 100) 
@@ -205,8 +208,8 @@ function Front() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-sm">
-                                <p className="text-gray-600">❤️ {patientData.restingBP || 'N/A'} bpm</p>
-                                <p className="text-gray-600">🩺 {patientData.systolic || 'N/A'}/{patientData.diastolic || 'N/A'}</p>
+                                <p className="text-gray-600">❤️ {patientData.ap_hi || 'N/A'}/{patientData.ap_lo || 'N/A'} mmHg</p>
+                                <p className="text-gray-600">🩺 BP {patientData.ap_hi && patientData.ap_lo ? (patientData.ap_hi >= 140 || patientData.ap_lo >= 90 ? 'High' : patientData.ap_hi >= 120 ? 'Elevated' : 'Normal') : 'N/A'}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -232,7 +235,16 @@ function Front() {
                             </td>
                             <td className="px-6 py-4">
                               <button 
-                                onClick={() => navigate('/home/records')}
+                                onClick={() => {
+                                  // Load this report into localStorage and switch to result tab
+                                  const predictionPayload = {
+                                    report: report,
+                                    patientId: report.patientId || `P${String(index + 1).padStart(3, '0')}`,
+                                    patientData: patientData,
+                                  };
+                                  localStorage.setItem('latestPrediction', JSON.stringify(predictionPayload));
+                                  setselectedtab('result');
+                                }}
                                 className="text-blue-600 hover:text-blue-700 font-medium text-sm"
                               >
                                 →
@@ -251,7 +263,7 @@ function Front() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-1">Risk Distribution</h2>
-                <p className="text-sm text-gray-500">Last 24 hrs</p>
+                <p className="text-sm text-gray-500">Overall</p>
               </div>
 
               {loading ? (
@@ -267,7 +279,7 @@ function Front() {
                       <div className="w-full h-full rounded-full bg-gradient-to-br from-red-100 via-yellow-100 to-green-100 flex items-center justify-center text-center">
                         <div className="bg-white w-28 h-28 rounded-full flex items-center justify-center">
                           <div>
-                            <p className="text-3xl font-bold text-red-600">{highRisk > 0 ? Math.round((highRisk/totalReports)*100) : 18}%</p>
+                            <p className="text-3xl font-bold text-red-600">{totalReports > 0 ? Math.round((highRisk/totalReports)*100) : 0}%</p>
                             <p className="text-xs text-gray-600">High Risk Patients</p>
                           </div>
                         </div>
@@ -280,19 +292,19 @@ function Front() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-700">18% High Risk</span>
+                        <span className="text-sm font-medium text-gray-700">{totalReports > 0 ? Math.round((highRisk/totalReports)*100) : 0}% High Risk</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-700">45% Moderate Risk</span>
+                        <span className="text-sm font-medium text-gray-700">{totalReports > 0 ? Math.round((moderateRisk/totalReports)*100) : 0}% Moderate Risk</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-700">37% Low Risk</span>
+                        <span className="text-sm font-medium text-gray-700">{totalReports > 0 ? Math.round((lowRisk/totalReports)*100) : 0}% Low Risk</span>
                       </div>
                     </div>
                   </div>

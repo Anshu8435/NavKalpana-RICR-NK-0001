@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { jsPDF } from "jspdf";
 
-function Result() {
+function Result({ setselectedtab }) {
   const [predictionData, setPredictionData] = useState(null);
 
   useEffect(() => {
@@ -59,6 +59,24 @@ function Result() {
                           predictionData?.prediction?.recommendations ||
                           predictionData?.report?.prediction?.recommendations ||
                           predictionData?.report?.mlResponse?.recommendations || [];
+
+  // Counterfactual explanations (what-if scenarios)
+  const counterfactuals = predictionData?.visit?.prediction?.counterfactuals ||
+                          predictionData?.prediction?.counterfactuals ||
+                          predictionData?.report?.prediction?.counterfactuals ||
+                          predictionData?.report?.mlResponse?.counterfactuals || [];
+
+  // Specialist referral suggestion
+  const referral = predictionData?.visit?.prediction?.referral ||
+                   predictionData?.prediction?.referral ||
+                   predictionData?.report?.prediction?.referral ||
+                   predictionData?.report?.mlResponse?.referral || null;
+
+  // All SHAP contributions for global view
+  const shapContributions = predictionData?.visit?.prediction?.shap_contributions ||
+                            predictionData?.prediction?.shap_contributions ||
+                            predictionData?.report?.prediction?.shap_contributions ||
+                            predictionData?.report?.mlResponse?.shap_contributions || {};
 
   let riskBg;
   // Use riskCategory from backend - it's the source of truth
@@ -163,7 +181,7 @@ function Result() {
     
     const patientInfoData = [
       ['Age', `${patientInfo.age || 'N/A'} years`],
-      ['Gender', patientInfo.gender === 1 ? 'Male' : 'Female'],
+      ['Gender', patientInfo.gender === 1 ? 'Male' : patientInfo.gender === 0 ? 'Female' : 'N/A'],
       ['Height', `${patientInfo.height || 'N/A'} cm`],
       ['Weight', `${patientInfo.weight || 'N/A'} kg`],
       ['Blood Pressure', `${patientInfo.ap_hi || 'N/A'}/${patientInfo.ap_lo || 'N/A'} mmHg`],
@@ -277,16 +295,53 @@ function Result() {
   };
 
   return (
-    <div className="flex-1 bg-[#eef2f7] p-6 lg:p-10 w-full">
-      <div className="max-w-[1300px] mx-auto bg-white p-10 rounded-[30px] shadow-xl">
+    <main className="flex-1 overflow-y-auto bg-[#eef2f7] p-4 md:p-6 lg:p-10 w-full">
+      <div className="max-w-[1300px] mx-auto bg-white p-6 md:p-10 rounded-[30px] shadow-xl">
+
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => setselectedtab && setselectedtab('dashboard')}
+            className="flex items-center gap-2 text-[#0a3d62] hover:text-[#3c6382] font-medium text-sm transition"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </button>
+          <button
+            onClick={() => setselectedtab && setselectedtab('analysis')}
+            className="flex items-center gap-2 bg-[#0a3d62] hover:bg-[#083050] text-white px-4 py-2 rounded-lg font-medium text-sm transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Assessment
+          </button>
+        </div>
+
+        {!predictionData ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">📊</div>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">No Prediction Data</h3>
+            <p className="text-gray-500 mb-6">Submit a health analysis to see your risk assessment results here.</p>
+            <button
+              onClick={() => setselectedtab && setselectedtab('analysis')}
+              className="bg-[#0a3d62] hover:bg-[#083050] text-white px-6 py-3 rounded-xl font-semibold transition"
+            >
+              Go to Heart Analysis
+            </button>
+          </div>
+        ) : (
+        <>
 
         <div className="text-[26px] font-semibold mb-8 text-[#0a3d62]">
           Patient Heart Risk Dashboard
         </div>
 
         {/* Patient Info */}
-        <div className="bg-gradient-to-r from-[#0a3d62] to-[#3c6382] p-8 rounded-[25px] text-white mb-8">
-          <div className="grid grid-cols-3 gap-5">
+        <div className="bg-gradient-to-r from-[#0a3d62] to-[#3c6382] p-5 md:p-8 rounded-[25px] text-white mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
 
             <div className="bg-white/10 p-5 rounded-[15px]">
               <h4 className="text-[13px] opacity-80 mb-1">Patient ID</h4>
@@ -295,22 +350,22 @@ function Result() {
 
             <div className="bg-white/10 p-5 rounded-[15px]">
               <h4 className="text-[13px] opacity-80 mb-1">Age</h4>
-              <p className="text-[20px] font-semibold">{patientInfo.age || 52} Years</p>
+              <p className="text-[20px] font-semibold">{patientInfo.age || 'N/A'} Years</p>
             </div>
 
             <div className="bg-white/10 p-5 rounded-[15px]">
               <h4 className="text-[13px] opacity-80 mb-1">Height</h4>
-              <p className="text-[20px] font-semibold">{patientInfo.height || 172} cm</p>
+              <p className="text-[20px] font-semibold">{patientInfo.height || 'N/A'} cm</p>
             </div>
 
             <div className="bg-white/10 p-5 rounded-[15px]">
               <h4 className="text-[13px] opacity-80 mb-1">Weight</h4>
-              <p className="text-[20px] font-semibold">{patientInfo.weight || 75} kg</p>
+              <p className="text-[20px] font-semibold">{patientInfo.weight || 'N/A'} kg</p>
             </div>
 
             <div className="bg-white/10 p-5 rounded-[15px]">
               <h4 className="text-[13px] opacity-80 mb-1">Blood Pressure</h4>
-              <p className="text-[20px] font-semibold">{patientInfo.ap_hi || 150}/{patientInfo.ap_lo || 95}</p>
+              <p className="text-[20px] font-semibold">{patientInfo.ap_hi || 'N/A'}/{patientInfo.ap_lo || 'N/A'}</p>
             </div>
 
             <div className="bg-white/10 p-5 rounded-[15px]">
@@ -434,6 +489,137 @@ function Result() {
           )}
         </div>
 
+        {/* Counterfactual Explanations - What-If Scenarios */}
+        {counterfactuals.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xl md:text-2xl font-bold text-[#0a3d62] mb-6">
+              What-If Scenarios (Counterfactual Analysis)
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              These show how your risk would change if specific health factors improved.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {counterfactuals.map((cf, index) => (
+                <div key={index} className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-xl p-5 shadow-sm">
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl">💡</span>
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm md:text-base">{cf.change_description}</h4>
+                      <span className="text-xs text-gray-500 uppercase font-semibold">{cf.label}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-500 mb-1">Current Risk</div>
+                      <div className="text-lg font-bold text-red-500">{Math.round(cf.current_risk * 100)}%</div>
+                    </div>
+                    <div className="text-xl text-gray-400">→</div>
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-500 mb-1">Potential Risk</div>
+                      <div className="text-lg font-bold text-green-600">{Math.round(cf.new_risk * 100)}%</div>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <div className="text-xs text-gray-500 mb-1">Reduction</div>
+                      <div className="text-lg font-bold text-[#0a3d62]">-{Math.round(cf.risk_reduction * 100)}%</div>
+                    </div>
+                  </div>
+                  {cf.new_category !== riskCategory && (
+                    <div className="mt-2 text-xs text-green-700 font-medium bg-green-100 rounded-md px-2 py-1 inline-block">
+                      Risk category would change to: {cf.new_category}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All SHAP Contributions Bar Chart */}
+        {Object.keys(shapContributions).length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xl md:text-2xl font-bold text-[#0a3d62] mb-6">
+              Complete SHAP Feature Contributions
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              All features and their impact on this prediction. Red bars increase risk, green bars decrease risk.
+            </p>
+            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              {Object.entries(shapContributions)
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                .map(([feature, value], index) => {
+                  const isPositive = value > 0;
+                  const absValue = Math.abs(value);
+                  const maxVal = Math.max(...Object.values(shapContributions).map(v => Math.abs(v)));
+                  const barWidth = maxVal > 0 ? Math.min((absValue / maxVal) * 100, 100) : 0;
+                  return (
+                    <div key={index} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+                      <div className="w-40 text-sm font-medium text-gray-700 text-right truncate">
+                        {formatFeatureName(feature)}
+                      </div>
+                      <div className="flex-1 flex items-center">
+                        <div className="w-full h-5 bg-gray-100 rounded-full overflow-hidden relative">
+                          <div
+                            className={`h-full rounded-full ${isPositive ? 'bg-red-400' : 'bg-green-400'}`}
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className={`w-20 text-sm font-bold text-right ${isPositive ? 'text-red-500' : 'text-green-600'}`}>
+                        {isPositive ? '+' : ''}{value.toFixed(4)}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Specialist Referral Suggestion */}
+        {referral && referral.specialists && referral.specialists.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xl md:text-2xl font-bold text-[#0a3d62] mb-6">
+              Specialist Referral Suggestion
+            </h3>
+            <div className={`border-l-4 rounded-xl p-6 shadow-sm ${
+              referral.urgency === 'urgent' ? 'border-l-red-500 bg-red-50' :
+              referral.urgency === 'soon' ? 'border-l-yellow-500 bg-yellow-50' :
+              'border-l-green-500 bg-green-50'
+            }`}>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">{referral.urgency === 'urgent' ? '🚨' : referral.urgency === 'soon' ? '⚠️' : '✅'}</span>
+                <span className={`text-sm font-bold uppercase ${
+                  referral.urgency === 'urgent' ? 'text-red-700' :
+                  referral.urgency === 'soon' ? 'text-yellow-700' :
+                  'text-green-700'
+                }`}>
+                  {referral.urgency} — {referral.timeline}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {referral.specialists.map((spec, i) => (
+                  <div key={i} className="bg-white/70 rounded-lg p-3">
+                    <div className="font-bold text-gray-900">{spec.type}</div>
+                    <div className="text-sm text-gray-600">{spec.reason}</div>
+                  </div>
+                ))}
+              </div>
+              {referral.tests_recommended && referral.tests_recommended.length > 0 && (
+                <div className="mt-4">
+                  <div className="font-semibold text-gray-800 text-sm mb-2">Recommended Tests:</div>
+                  <ul className="space-y-1">
+                    {referral.tests_recommended.map((test, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span className="text-[#0a3d62]">•</span>
+                        <span>{test}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Download PDF Button */}
         <button
           onClick={generatePDF}
@@ -445,8 +631,10 @@ function Result() {
           Download PDF Report
         </button>
 
+        </>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
 

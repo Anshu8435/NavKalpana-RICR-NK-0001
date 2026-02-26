@@ -22,7 +22,7 @@
 
 **Tagline:** Predicting Heart Health, Saving Lives
 
-**Presenter:** [Your Name]  
+**Presenter:** Team NavKalpana  
 **Date:** February 22, 2026  
 **Version:** 1.0
 
@@ -101,8 +101,10 @@ Smoking | Alcohol | Physical Activity
 ### Output
 - **Risk Probability:** 0-100%
 - **Risk Category:** Low / Moderate / High
-- **Top 3 Risk Factors:** With impact scores
-- **Recommendations:** Clinical action items
+- **Top 3 Risk Factors:** With SHAP impact scores
+- **Counterfactual Explanations:** What-if scenarios (e.g., "If your BP was 120, risk drops to 35%")
+- **Specialist Referral:** Automated referral suggestion based on risk severity
+- **Recommendations:** Personalized clinical action items
 
 ---
 
@@ -184,7 +186,17 @@ Smoking | Alcohol | Physical Activity
 ### Training Data
 - **70,000 patients** (balanced dataset)
 - **16 features** (11 input + 5 engineered)
-- **Standard Scaler** normalization
+- **5 models compared**, XGBoost selected as best
+
+### Model Comparison
+
+| Model | ROC-AUC | Recall | Inference |
+|-------|---------|--------|-----------|
+| **XGBoost (Selected)** | **0.782** | **84.7%** | **240ms** |
+| LightGBM | 0.775 | 83.2% | 200ms |
+| Neural Network (MLP) | 0.760 | 81.5% | 320ms |
+| TabNet | 0.755 | 80.1% | 400ms |
+| Ensemble (Voting) | 0.778 | 83.9% | 600ms |
 
 ### Model Performance
 
@@ -234,6 +246,36 @@ Smoking | Alcohol | Physical Activity
 ---
 
 *Visual: SHAP waterfall chart, feature importance bar chart*
+
+---
+
+# SLIDE 8.5: Counterfactual Explanations
+
+## What-If Scenarios for Actionable Insights
+
+### Same Patient (55yo, BP 160/95, BMI 32, Smoker)
+
+| Change | Current Risk | New Risk | Reduction |
+|--------|-------------|----------|-----------|
+| If Systolic BP was 120 mmHg | 72% | 58% | **-14%** |
+| If you quit smoking | 72% | 65% | **-7%** |
+| If Cholesterol returns to Normal | 72% | 67% | **-5%** |
+| If you become physically active | 72% | 69% | **-3%** |
+
+### How It Works
+1. For each modifiable risk factor, simulate healthy value
+2. Re-run the model with modified input
+3. Calculate risk reduction
+4. Rank by impact — show most impactful changes first
+
+### Clinical Value
+- Empowers patients with **actionable steps**
+- Helps doctors prioritize **which intervention** to recommend first
+- Quantifies the benefit of lifestyle changes
+
+---
+
+*Visual: Before/After risk bars, arrow showing reduction*
 
 ---
 
@@ -474,21 +516,21 @@ Database:  MongoDB Atlas (Cloud)
 ## Built by Experts
 
 ### Technical Team
-**ML Engineer**
-- 5+ years in healthcare AI
-- Published research in CVD prediction
 
-**Full-Stack Developer**
-- MERN stack specialist
-- AWS/Cloud deployment expert
+**Arpit Garg** — ML Engineer & Team Lead
+- ML model training, SHAP explainability, FastAPI service
+- Feature engineering and model calibration
 
-**Data Scientist**
-- PhD in Biostatistics
-- Experience with medical datasets
+**Fareha** — Backend Developer
+- Node.js/Express API, MongoDB schemas
+- Authentication system, API documentation
 
-**Backend Developer**
-- Node.js & Python expert
-- Microservices architecture
+**Anshu** — Frontend Developer
+- React UI, Tailwind CSS styling
+- Dashboard, patient forms, risk visualization
+
+**Rishabh Malviya** — Full-Stack Support
+- Integration, testing, deployment configuration
 
 ### Advisory Board
 **Cardiologist** - Clinical validation  
@@ -602,10 +644,8 @@ Database:  MongoDB Atlas (Cloud)
 ## Questions?
 
 **Contact:**
-- 📧 Email: [your.email@cardioshield.ai]
-- 🌐 Website: [www.cardioshield.ai]
-- 💼 LinkedIn: [/in/yourname]
-- 📱 Phone: [+91-XXXXX-XXXXX]
+- GitHub: https://github.com/Anshu8435/NavKalpana-RICR-NK-0001
+- Live Demo: https://cardioshield.onrender.com
 
 **Demo Available:** Schedule a live walkthrough
 

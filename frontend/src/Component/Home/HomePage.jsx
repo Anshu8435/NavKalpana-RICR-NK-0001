@@ -12,11 +12,22 @@ import { MdDashboard } from "react-icons/md";
 import { FaHeartbeat, FaUserInjured, FaFileMedical, FaUserCircle } from "react-icons/fa";
 
 function HomePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [selectedtab , setselectedtab] = useState('dashboard')
+  const [selectedtab , setselectedtab] = useState(() => {
+    return searchParams.get('tab') || 'dashboard';
+  });
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Sync: when selectedtab state changes, update the URL to match
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (currentTab !== selectedtab) {
+      setSearchParams({ tab: selectedtab }, { replace: true });
+    }
+  }, [selectedtab]);
+
+  // Sync: when URL changes (browser back/forward, navigate()), update state to match
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -24,7 +35,7 @@ function HomePage() {
       return;
     }
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl) {
+    if (tabFromUrl && tabFromUrl !== selectedtab) {
       setselectedtab(tabFromUrl);
     }
   }, [searchParams, navigate]);
@@ -50,12 +61,12 @@ function HomePage() {
         />
 
         {/* MAIN CONTENT */}
-        {selectedtab === "dashboard" && <Front />}
-        {selectedtab === "admin" && <Registration />}
-        {selectedtab === "analysis" && <Analatics />}
-        {selectedtab === "reports" && <Records searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+        {selectedtab === "dashboard" && <Front setselectedtab={setselectedtab} />}
+        {selectedtab === "admin" && <Registration setselectedtab={setselectedtab} />}
+        {selectedtab === "analysis" && <Analatics setselectedtab={setselectedtab} />}
+        {selectedtab === "reports" && <Records searchQuery={searchQuery} setSearchQuery={setSearchQuery} setselectedtab={setselectedtab} />}
         {selectedtab === "profile" && <Profile />}
-        {selectedtab === "result" && <Result />}
+        {selectedtab === "result" && <Result setselectedtab={setselectedtab} />}
       </div>
 
       {/* Mobile Bottom Navigation */}

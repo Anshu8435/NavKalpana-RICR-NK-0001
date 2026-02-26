@@ -5,7 +5,7 @@ import { LoadingSpinner } from "../../components/Loading";
 import { Alert, EmptyState } from "../../components/Alert";
 import { Search, Download, UserPlus, ChevronRight, X } from "lucide-react";
 
-function Records({ searchQuery = '', setSearchQuery }) {
+function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
@@ -86,12 +86,10 @@ function Records({ searchQuery = '', setSearchQuery }) {
 
     // Gender filter
     if (genderFilter) {
-      const genderValue = genderFilter === 'Male' ? 1 : genderFilter === 'Female' ? 2 : null;
-      if (genderValue) {
-        filtered = filtered.filter(report => 
-          report.visitId?.patientData?.gender === genderValue
-        );
-      }
+      const genderValue = genderFilter === 'Male' ? 1 : 0;
+      filtered = filtered.filter(report => 
+        report.visitId?.patientData?.gender === genderValue
+      );
     }
 
     setFilteredReports(filtered);
@@ -142,7 +140,7 @@ function Records({ searchQuery = '', setSearchQuery }) {
       doc.setFont('helvetica', 'bold');
       doc.text(`${report.patientId} - Age: ${patientData.age || 'N/A'}`, 20, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Gender: ${patientData.gender === 1 ? 'Male' : 'Female'}`, 20, y + 6);
+      doc.text(`Gender: ${patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'}`, 20, y + 6);
       doc.text(`Risk: ${report.prediction?.risk_category || 'N/A'} (${riskScore}%)`, 20, y + 12);
       
       y += 25;
@@ -188,7 +186,7 @@ function Records({ searchQuery = '', setSearchQuery }) {
     const patientInfo = [
       ['Patient ID', report.patientId],
       ['Age', `${patientData.age || 'N/A'} years`],
-      ['Gender', patientData.gender === 1 ? 'Male' : 'Female'],
+      ['Gender', patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'],
       ['Height', `${patientData.height || 'N/A'} cm`],
       ['Weight', `${patientData.weight || 'N/A'} kg`],
       ['Blood Pressure', `${patientData.ap_hi || 'N/A'}/${patientData.ap_lo || 'N/A'} mmHg`],
@@ -263,7 +261,7 @@ function Records({ searchQuery = '', setSearchQuery }) {
               Export
             </button>
             <button
-              onClick={() => window.location.href = '?tab=admin'}
+              onClick={() => { if (setselectedtab) setselectedtab('admin'); }}
               className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg transition text-sm md:text-base font-semibold shadow-md"
             >
               <UserPlus size={18} />
@@ -377,7 +375,7 @@ function Records({ searchQuery = '', setSearchQuery }) {
                             </span>
                           </div>
                           <p className="text-xs md:text-sm text-gray-600">
-                            {patientData.age || 'N/A'} yrs • {patientData.gender === 1 ? 'Male' : 'Female'}
+                            {patientData.age || 'N/A'} yrs • {patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'}
                           </p>
                         </div>
 
@@ -432,7 +430,7 @@ function Records({ searchQuery = '', setSearchQuery }) {
                       />
                       <InfoField 
                         label="Gender" 
-                        value={selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'} 
+                        value={selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : selectedReport.visitId?.patientData?.gender === 0 ? 'Female' : 'N/A'} 
                       />
                       <InfoField 
                         label="Height" 
@@ -473,7 +471,9 @@ function Records({ searchQuery = '', setSearchQuery }) {
                             ? 'Normal' 
                             : selectedReport.visitId?.patientData?.cholesterol === 2 
                             ? 'Above Normal' 
-                            : 'High'
+                            : selectedReport.visitId?.patientData?.cholesterol === 3
+                            ? 'High'
+                            : 'N/A'
                         } 
                       />
                       <InfoField 
@@ -483,7 +483,9 @@ function Records({ searchQuery = '', setSearchQuery }) {
                             ? 'Normal' 
                             : selectedReport.visitId?.patientData?.gluc === 2 
                             ? 'Above Normal' 
-                            : 'High'
+                            : selectedReport.visitId?.patientData?.gluc === 3
+                            ? 'High'
+                            : 'N/A'
                         } 
                       />
                     </div>
@@ -583,6 +585,22 @@ function Records({ searchQuery = '', setSearchQuery }) {
 
                   {/* Action Buttons */}
                   <div className="border-t pt-6 flex gap-3">
+                    <button
+                      onClick={() => {
+                        // Load full report into localStorage and navigate to Result tab
+                        const predictionPayload = {
+                          report: selectedReport,
+                          patientId: selectedReport.patientId || 'N/A',
+                          patientData: selectedReport.visitId?.patientData || {},
+                        };
+                        localStorage.setItem('latestPrediction', JSON.stringify(predictionPayload));
+                        if (setselectedtab) setselectedtab('result');
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#0a3d62] hover:bg-[#083050] text-white rounded-lg font-semibold transition shadow-md"
+                    >
+                      <ChevronRight size={18} />
+                      View Full Report
+                    </button>
                     <button
                       onClick={() => generatePDF(selectedReport)}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-semibold transition shadow-md"

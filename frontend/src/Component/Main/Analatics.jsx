@@ -4,7 +4,7 @@ import { predictionService } from "../../services/apiService";
 import { LoadingButton } from "../../components/Loading";
 import { Alert } from "../../components/Alert";
 
-function Analatics() {
+function Analatics({ setselectedtab }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,8 +85,12 @@ function Analatics() {
           patientData: predictionData
         }));
         
-        // Navigate to result tab
-        navigate('/home?tab=result');
+        // Switch to result tab
+        if (setselectedtab) {
+          setselectedtab('result');
+        } else {
+          navigate('/home?tab=result');
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Prediction failed. Please check your inputs and try again.');
