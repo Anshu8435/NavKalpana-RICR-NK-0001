@@ -79,14 +79,20 @@ const registerUser = async (userData) => {
     
     logger.logAuth('register', user._id, true, { email });
   } catch (error) {
-    logger.error('Failed to send verification email, deleting user', {
+    logger.error('Failed to send verification email', {
       userId: user._id,
       email,
       error: error.message,
     });
-    
-    await User.findByIdAndDelete(user._id);
-    throw new ErrorResponse('Failed to send verification email. Please try again.', 500);
+
+    // Do NOT delete the created user on mail failure to avoid data loss.
+    // Return a success-like response indicating email delivery is pending.
+    return {
+      success: true,
+      message:
+        'Registration created. Verification email could not be sent immediately — it will be retried. Please check your inbox or request a resend.',
+      userId: user._id,
+    };
   }
 
   return {
