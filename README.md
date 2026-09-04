@@ -73,7 +73,8 @@ Create a `.env` file in the `backend/` directory:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=your_mongodb_connection_string
+MONGO_URI=mongodb://127.0.0.1:27017/cardioshield
+# Legacy alias: MONGODB_URI also works
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=7d
 FRONTEND_URL=http://localhost:5173
@@ -81,7 +82,8 @@ ML_SERVICE_URL=http://localhost:8000
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password
+EMAIL_PASSWORD=your_app_password
+# Legacy alias: EMAIL_PASS also works
 ```
 Start the backend:
 ```bash
