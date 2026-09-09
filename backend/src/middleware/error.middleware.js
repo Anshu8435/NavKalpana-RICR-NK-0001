@@ -78,9 +78,13 @@ const errorHandler = (err, req, res, next) => {
   }
 
 
+  const displayMessage = error.errors?.length
+    ? `${error.message}: ${error.errors.map((e) => e.message).join('; ')}`
+    : (error.message || 'Server Error');
+
   res.status(error.statusCode || 500).json({
     success: false,
-    message: error.message || 'Server Error',
+    message: displayMessage,
     errors: error.errors || null,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });

@@ -21,12 +21,35 @@ const registerUser = async (userData) => {
 
   logger.info('User registration attempt', { email, name });
 
+  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true';
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     if (existingUser.isEmailVerified) {
       logger.warn('Registration failed - User already exists', { email });
       throw new ErrorResponse('User already exists with this email', 400);
     } else {
+      if (shouldSkipVerification) {
+        existingUser.isEmailVerified = true;
+        existingUser.verificationToken = undefined;
+        existingUser.verificationTokenExpires = undefined;
+        await existingUser.save();
+
+        const jwtToken = generateToken(existingUser._id);
+        const sanitized = sanitizeUser(existingUser);
+        return {
+          success: true,
+          message: 'Account verified successfully!',
+          token: jwtToken,
+          user: sanitized,
+          data: {
+            token: jwtToken,
+            user: sanitized,
+          },
+          userId: existingUser._id,
+        };
+      }
+
       logger.info('Resending verification email to unverified user', { email });
       
       const { token, hashedToken, expiresAt } = generateVerificationToken();
@@ -36,11 +59,17 @@ const registerUser = async (userData) => {
       await existingUser.save();
 
       const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
-      await sendEmail({
-        to: email,
-        subject: 'Verify Your CardioShield AI Account',
-        html: emailVerificationTemplate(name, verificationUrl),
-      });
+      console.log(`\n[CardioShield] Verification Link: ${verificationUrl}\n`);
+      
+      try {
+        await sendEmail({
+          to: email,
+          subject: 'Verify Your CardioShield AI Account',
+          html: emailVerificationTemplate(name, verificationUrl),
+        });
+      } catch (err) {
+        logger.warn('Email could not be sent (SMTP not configured or failed)', { error: err.message });
+      }
 
       logger.logAuth('resend-verification', existingUser._id, true, { email });
 
@@ -58,8 +87,9 @@ const registerUser = async (userData) => {
     name,
     email,
     password,
-    verificationToken: hashedToken,
-    verificationTokenExpires: expiresAt,
+    isEmailVerified: shouldSkipVerification,
+    verificationToken: shouldSkipVerification ? undefined : hashedToken,
+    verificationTokenExpires: shouldSkipVerification ? undefined : expiresAt,
   });
 
   logger.info('New user created successfully', {
@@ -69,6 +99,24 @@ const registerUser = async (userData) => {
   });
 
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
+  console.log(`\n[CardioShield] Verification Link for ${email}: ${verificationUrl}\n`);
+
+  if (shouldSkipVerification) {
+    const jwtToken = generateToken(user._id);
+    const sanitized = sanitizeUser(user);
+    logger.logAuth('register_auto_verified', user._id, true, { email });
+    return {
+      success: true,
+      message: 'Registration successful! Welcome to CardioShield AI.',
+      token: jwtToken,
+      user: sanitized,
+      data: {
+        token: jwtToken,
+        user: sanitized,
+      },
+      userId: user._id,
+    };
+  }
   
   try {
     await sendEmail({
@@ -281,6 +329,7 @@ const forgotPassword = async (email) => {
   await user.save();
 
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+  console.log(`\n[CardioShield] Password Reset Link for ${email}: ${resetUrl}\n`);
   
   try {
     await sendEmail({
@@ -292,16 +341,19 @@ const forgotPassword = async (email) => {
     logger.info('Password reset email sent successfully', { email, userId: user._id });
     logger.logAuth('password_reset_request', user._id, true, { email });
   } catch (error) {
-    logger.error('Failed to send password reset email', { 
+    logger.warn('Failed to send password reset email (SMTP not configured or failed)', { 
       email, 
       userId: user._id, 
       error: error.message 
     });
     
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save();
-    throw new ErrorResponse('Failed to send password reset email', 500);
+    // In production, require email delivery; in dev, allow token so developer can use logged link
+    if (process.env.NODE_ENV === 'production') {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save();
+      throw new ErrorResponse('Failed to send password reset email', 500);
+    }
   }
 
   return {

@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import logger from './logger.js';
+import { getMongoUri } from './env.js';
 
 const connectDB = async () => {
   try {
     logger.info('Attempting to connect to MongoDB...');
     
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const mongoUri = getMongoUri();
+    const conn = await mongoose.connect(mongoUri);
 
     logger.info('MongoDB connected successfully', {
       host: conn.connection.host,

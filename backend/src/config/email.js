@@ -1,34 +1,47 @@
 import nodemailer from 'nodemailer';
 import logger from './logger.js';
+import { getEmailPassword, getEmailUser } from './env.js';
 
 const createTransporter = () => {
-  if (process.env.NODE_ENV === 'production') {
-    logger.debug('Creating production email transporter');
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+  const emailUser = getEmailUser();
+  const emailPassword = getEmailPassword();
+  const hasEmailCredentials = Boolean(emailUser && emailPassword);
+
+  const transportConfig = {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: Number(process.env.EMAIL_PORT || 587),
+    secure: process.env.NODE_ENV === 'production',
+  };
+
+  if (hasEmailCredentials) {
+    transportConfig.auth = {
+      user: emailUser,
+      pass: emailPassword,
+    };
   } else {
-    logger.debug('Creating development email transporter');
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: process.env.EMAIL_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    logger.warn('Email SMTP credentials not configured; skipping auth for email transport');
   }
+
+  logger.debug('Creating email transporter', {
+    hasEmailCredentials,
+    host: transportConfig.host,
+    port: transportConfig.port,
+    secure: transportConfig.secure,
+  });
+
+  return nodemailer.createTransport(transportConfig);
 };
 
 // Verifies transporter connectivity without throwing in production startup.
 const verifyTransporter = async () => {
+  const emailUser = getEmailUser();
+  const emailPassword = getEmailPassword();
+
+  if (!emailUser || !emailPassword) {
+    logger.warn('Email transporter verification skipped because SMTP credentials are missing');
+    return false;
+  }
+
   try {
     const transporter = createTransporter();
     // set a reasonable timeout to avoid very long hangs
@@ -45,6 +58,13 @@ const verifyTransporter = async () => {
 };
 
 const sendEmail = async (options) => {
+  const emailUser = getEmailUser();
+  const emailPassword = getEmailPassword();
+
+  if (!emailUser || !emailPassword) {
+    throw new Error('Email services are not configured. Add EMAIL_USER and EMAIL_PASSWORD before sending mail.');
+  }
+
   try {
     logger.debug('Preparing to send email', {
       to: options.to,
