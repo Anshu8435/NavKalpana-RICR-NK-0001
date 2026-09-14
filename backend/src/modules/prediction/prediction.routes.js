@@ -17,11 +17,27 @@ import {
 
 const router = express.Router();
 
+/**
+ * Normalizes blood pressure if user accidentally entered them inverted
+ * (e.g., entered diastolic in systolic field and vice-versa)
+ */
+const normalizeBloodPressure = (req, res, next) => {
+  if (req.body && req.body.ap_hi != null && req.body.ap_lo != null) {
+    const hi = Number(req.body.ap_hi);
+    const lo = Number(req.body.ap_lo);
+    if (!isNaN(hi) && !isNaN(lo) && lo > hi) {
+      req.body.ap_hi = lo;
+      req.body.ap_lo = hi;
+    }
+  }
+  next();
+};
+
 router.use(protect);
 
 router.get('/health', testMLService);
 
-router.post('/', validate(predictionSchema), createPrediction);
+router.post('/', normalizeBloodPressure, validate(predictionSchema), createPrediction);
 
 router.get('/reports', validate(querySchema, 'query'), getUserReports);
 
