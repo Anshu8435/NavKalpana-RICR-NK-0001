@@ -1,70 +1,67 @@
-// Alert Component for Success/Error/Warning/Info messages
+import React from 'react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export const Alert = ({ type = 'info', message, onClose, className = '' }) => {
-  const types = {
+  const configs = {
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-700',
-      icon: '✓',
+      bg: 'bg-[#E8F8F4]/80 border-[#13B8A6]/40 text-[#16866A]',
+      icon: <CheckCircle2 className="w-5 h-5 text-[#13B8A6] shrink-0" />,
     },
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-700',
-      icon: '✕',
+      bg: 'bg-[#FDF2F3]/90 border-[#D94F59]/30 text-[#D94F59]',
+      icon: <AlertCircle className="w-5 h-5 text-[#D94F59] shrink-0" />,
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-300',
-      text: 'text-yellow-800',
-      icon: '⚠',
+      bg: 'bg-[#FEF6E7]/90 border-[#D49A27]/30 text-[#B45309]',
+      icon: <AlertTriangle className="w-5 h-5 text-[#D49A27] shrink-0" />,
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-700',
-      icon: 'ℹ',
+      bg: 'bg-[#F0F7FF]/90 border-[#123B5D]/20 text-[#123B5D]',
+      icon: <Info className="w-5 h-5 text-[#13B8A6] shrink-0" />,
     },
   };
 
-  const style = types[type] || types.info;
+  const config = configs[type] || configs.info;
 
   return (
-    <div className={`${style.bg} border ${style.border} ${style.text} px-4 py-3 rounded-xl flex items-center justify-between ${className}`}>
+    <div className={`backdrop-blur-sm border px-4 py-3.5 rounded-xl shadow-sm flex items-center justify-between gap-3 transition-all animate-fadeIn ${config.bg} ${className}`}>
       <div className="flex items-center gap-3">
-        <span className="text-xl font-bold">{style.icon}</span>
-        <span className="text-sm">{message}</span>
+        {config.icon}
+        <span className="text-sm font-medium leading-relaxed">{message}</span>
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className={`${style.text} hover:opacity-70 font-bold text-lg`}
+          type="button"
+          aria-label="Dismiss alert"
+          className="p-1 rounded-lg opacity-70 hover:opacity-100 hover:bg-black/5 transition-colors shrink-0"
         >
-          ×
+          <X className="w-4 h-4" />
         </button>
       )}
     </div>
   );
 };
 
-// Error Message Component
 export const ErrorMessage = ({ error, onRetry, className = '' }) => {
   if (!error) return null;
 
   return (
-    <div className={`bg-red-50 border border-red-200 rounded-xl p-6 ${className}`}>
-      <div className="flex items-start gap-3">
-        <span className="text-red-500 text-2xl">⚠️</span>
+    <div className={`bg-[#FDF2F3]/90 border border-[#D94F59]/30 rounded-2xl p-6 shadow-sm ${className}`}>
+      <div className="flex items-start gap-4">
+        <div className="p-2.5 rounded-xl bg-[#D94F59]/10 text-[#D94F59] shrink-0">
+          <AlertCircle className="w-6 h-6" />
+        </div>
         <div className="flex-1">
-          <h3 className="text-red-800 font-semibold mb-2">Error Occurred</h3>
-          <p className="text-red-700 text-sm mb-4">{error}</p>
+          <h3 className="text-[#172B3A] font-semibold text-base mb-1">Clinical Exception</h3>
+          <p className="text-[#627487] text-sm leading-relaxed mb-4">{error}</p>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              type="button"
+              className="bg-[#0B1F33] hover:bg-[#123B5D] text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm active:scale-95"
             >
-              Try Again
+              Retry Action
             </button>
           )}
         </div>
@@ -73,9 +70,8 @@ export const ErrorMessage = ({ error, onRetry, className = '' }) => {
   );
 };
 
-// Empty State Component
 export const EmptyState = ({ 
-  icon = '📭', 
+  icon, 
   title = 'No Data Found', 
   message = 'There is nothing to display here yet.', 
   action,
@@ -83,14 +79,17 @@ export const EmptyState = ({
   className = ''
 }) => {
   return (
-    <div className={`text-center py-12 ${className}`}>
-      <div className="text-6xl mb-4">{icon}</div>
-      <h3 className="text-xl font-semibold text-gray-800 mb-2">{title}</h3>
-      <p className="text-gray-600 mb-6 max-w-md mx-auto">{message}</p>
+    <div className={`text-center py-16 px-4 bg-white/60 border border-[#E0E8F0] rounded-2xl ${className}`}>
+      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#E8F8F4] flex items-center justify-center text-[#13B8A6] shadow-sm">
+        {icon || <Info className="w-8 h-8" />}
+      </div>
+      <h3 className="text-lg font-bold text-[#172B3A] mb-1 font-display">{title}</h3>
+      <p className="text-[#627487] text-sm mb-6 max-w-sm mx-auto leading-relaxed">{message}</p>
       {action && (
         <button
           onClick={action}
-          className="bg-[#0a3d62] hover:bg-[#3c6382] text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          type="button"
+          className="bg-gradient-to-r from-[#0B1F33] to-[#123B5D] hover:from-[#123B5D] hover:to-[#1B4D78] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-95"
         >
           {actionLabel}
         </button>
@@ -98,5 +97,3 @@ export const EmptyState = ({
     </div>
   );
 };
-
-export default { Alert, ErrorMessage, EmptyState };
