@@ -1,9 +1,24 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { predictionService } from "../../services/apiService";
 import { LoadingSpinner } from "../../components/Loading";
 import { Alert, EmptyState } from "../../components/Alert";
-import { Search, Download, UserPlus, ChevronRight, X } from "lucide-react";
+import { 
+  Search, 
+  Download, 
+  UserPlus, 
+  ChevronRight, 
+  X, 
+  Activity, 
+  FileText, 
+  User, 
+  Heart, 
+  Scale, 
+  Droplet, 
+  CheckCircle2, 
+  Filter,
+  ArrowRight
+} from "lucide-react";
 
 function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,6 +70,9 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
         });
         setReports(processedReports);
         setFilteredReports(processedReports);
+        if (processedReports.length > 0 && !selectedReport) {
+          setSelectedReport(processedReports[0]);
+        }
       }
     } catch (err) {
       console.error('Error fetching reports:', err);
@@ -67,7 +85,6 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
   const filterReports = () => {
     let filtered = [...reports];
 
-    // Search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(report => {
@@ -77,14 +94,12 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
       });
     }
 
-    // Risk filter
     if (riskFilter) {
       filtered = filtered.filter(report => 
         report.prediction?.risk_category === riskFilter
       );
     }
 
-    // Gender filter
     if (genderFilter) {
       const genderValue = genderFilter === 'Male' ? 1 : 0;
       filtered = filtered.filter(report => 
@@ -101,9 +116,9 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
   };
 
   const getRiskBadgeClass = (category) => {
-    if (category === 'High Risk') return 'bg-red-100 text-red-700';
-    if (category === 'Moderate Risk') return 'bg-yellow-100 text-yellow-700';
-    return 'bg-green-100 text-green-700';
+    if (category === 'High Risk') return 'bg-rose-50 text-[#D94F59] border-rose-200';
+    if (category === 'Moderate Risk') return 'bg-amber-50 text-[#D49A27] border-amber-200';
+    return 'bg-teal-50 text-[#16866A] border-teal-200';
   };
 
   const exportAllReports = () => {
@@ -111,19 +126,18 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 
-    // Header
-    doc.setFillColor(44, 95, 124);
+    doc.setFillColor(11, 31, 51);
     doc.rect(0, 0, pageWidth, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('CardioShield AI - Patient Records', pageWidth / 2, 25, { align: 'center' });
+    doc.text('CardioShield AI - Clinical Cohort Records', pageWidth / 2, 25, { align: 'center' });
 
     y = 55;
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(12);
+    doc.setTextColor(23, 43, 58);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Patients: ${filteredReports.length}`, 20, y);
+    doc.text(`Total Longitudinal Records: ${filteredReports.length}`, 20, y);
 
     y += 15;
     filteredReports.forEach((report, index) => {
@@ -138,405 +152,319 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
         : 0;
 
       doc.setFont('helvetica', 'bold');
-      doc.text(`${report.patientId} - Age: ${patientData.age || 'N/A'}`, 20, y);
+      doc.text(`${report.patientId} - Age: ${patientData.age || 'N/A'}y`, 20, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Gender: ${patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'}`, 20, y + 6);
-      doc.text(`Risk: ${report.prediction?.risk_category || 'N/A'} (${riskScore}%)`, 20, y + 12);
+      doc.text(`Sex: ${patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'} | BP: ${patientData.ap_hi || '—'}/${patientData.ap_lo || '—'} mmHg`, 20, y + 5);
+      doc.text(`Risk: ${report.prediction?.risk_category || 'N/A'} (${riskScore}%)`, 20, y + 10);
       
-      y += 25;
+      y += 20;
     });
 
-    doc.save(`CardioShield_Patient_Records_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`CardioShield_Clinical_Records_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-
-
   return (
-    <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6 lg:p-8">
-      <div className="max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      
+      {/* Top Header Card */}
+      <div className="bg-gradient-to-r from-[#0B1F33] via-[#0E2A44] to-[#123B5D] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-white/10 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#1e4a6b]">
-              Patient Records
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/15 border border-teal-500/25 text-[#20D9C2] text-xs font-semibold mb-2">
+              <FileText size={14} />
+              <span>Audited Clinical Registry</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-white">
+              Patient Assessment Archive
             </h1>
-            <p className="text-sm md:text-base text-gray-600 mt-1">
-              Manage and view all patient history
+            <p className="text-sm text-slate-300">
+              Longitudinal tracking of all executed cardiovascular risk models and SHAP explanations.
             </p>
           </div>
-          <div className="flex gap-3">
+
+          <div className="flex items-center gap-3">
             <button
               onClick={exportAllReports}
-              className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm md:text-base font-medium text-gray-700"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white border border-white/20 rounded-xl font-semibold text-xs transition-all"
             >
-              <Download size={18} />
-              Export
+              <Download size={15} />
+              <span>Export Registry (PDF)</span>
             </button>
             <button
               onClick={() => { if (setselectedtab) setselectedtab('admin'); }}
-              className="flex items-center gap-2 px-4 md:px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg transition text-sm md:text-base font-semibold shadow-md"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] rounded-xl font-bold text-xs shadow-md shadow-[#20D9C2]/20 hover:shadow-lg transition-all"
             >
-              <UserPlus size={18} />
-              Add Patient
+              <UserPlus size={15} />
+              <span>New Patient</span>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert 
-            type="error" 
-            message={error} 
-            onClose={() => setError('')}
-            className="mb-6"
-          />
-        )}
+      {/* Error Alert */}
+      {error && (
+        <Alert 
+          type="error" 
+          message={error} 
+          onClose={() => setError('')}
+        />
+      )}
 
-        {/* Main Content */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left Panel - Patient List */}
-          <div className={`${selectedReport ? 'lg:w-1/2' : 'w-full'} transition-all duration-300`}>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-              {/* Search and Filters */}
-              <div className="space-y-4 mb-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by Patient Name or ID..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <select
-                    value={riskFilter}
-                    onChange={(e) => setRiskFilter(e.target.value)}
-                    className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base bg-white"
-                  >
-                    <option value="">All Risks</option>
-                    <option value="Low Risk">Low Risk</option>
-                    <option value="Moderate Risk">Moderate Risk</option>
-                    <option value="High Risk">High Risk</option>
-                  </select>
-
-                  <select
-                    value={genderFilter}
-                    onChange={(e) => setGenderFilter(e.target.value)}
-                    className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none text-sm md:text-base bg-white"
-                  >
-                    <option value="">All Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Patient Count */}
-              <p className="text-sm text-gray-600 mb-4">
-                Showing <span className="font-semibold">{filteredReports.length}</span> of{' '}
-                <span className="font-semibold">{reports.length}</span> patients
-              </p>
-
-              {/* Patient List */}
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                {loading ? (
-                  <div className="text-center py-12">
-                    <LoadingSpinner className="mx-auto" />
-                    <p className="mt-4 text-gray-500">Loading patients...</p>
-                  </div>
-                ) : filteredReports.length === 0 ? (
-                  <EmptyState
-                    
-                    title="No Patients Found"
-                    message="No patients match your search criteria."
-                  />
-                ) : (
-                  filteredReports.map((report, index) => {
-                    const patientData = report.visitId?.patientData || {};
-                    const riskScore = report.prediction?.risk_probability 
-                      ? Math.round(report.prediction.risk_probability * 100) 
-                      : 0;
-                    const isSelected = selectedReport?._id === report._id;
-
-                    return (
-                      <div
-                        key={report._id}
-                        onClick={() => setSelectedReport(report)}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
-                          isSelected 
-                            ? 'border-cyan-500 bg-cyan-50' 
-                            : 'border-gray-200 hover:border-cyan-300'
-                        }`}
-                      >
-                        {/* Avatar */}
-                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gradient-to-br from-[#2c5f7c] to-[#1a3f54] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                          {getInitials(index)}
-                        </div>
-
-                        {/* Patient Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate">
-                              Patient {report.patientId}
-                            </h3>
-                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                              {report.patientId}
-                            </span>
-                          </div>
-                          <p className="text-xs md:text-sm text-gray-600">
-                            {patientData.age || 'N/A'} yrs • {patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : 'N/A'}
-                          </p>
-                        </div>
-
-                        {/* Risk Badge */}
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getRiskBadgeClass(report.prediction?.risk_category)}`}>
-                            {report.prediction?.risk_category?.split(' ')[0] || 'N/A'}
-                          </span>
-                          <span className="text-xs text-gray-500">Score: {riskScore}%</span>
-                        </div>
-
-                        {/* Arrow */}
-                        <ChevronRight 
-                          size={20} 
-                          className={`flex-shrink-0 ${isSelected ? 'text-cyan-600' : 'text-gray-400'}`} 
-                        />
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+      {/* Master-Detail Split Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* Left Column: Patient List with Filters */}
+        <div className="lg:col-span-5 bg-white rounded-3xl border border-[#E0E8F0] shadow-sm p-5 space-y-4">
+          
+          {/* Search Bar */}
+          <div className="relative group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#13B8A6]" size={16} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Patient ID or Report Code..."
+              className="w-full pl-10 pr-4 py-2.5 text-xs text-[#172B3A] placeholder-slate-400 bg-[#F5F8FC]/50 rounded-xl border border-[#E0E8F0] focus:bg-white focus:outline-none focus:border-[#13B8A6] focus:ring-2 focus:ring-[#20D9C2]/20 transition-all duration-200"
+            />
           </div>
 
-          {/* Right Panel - Patient Details */}
+          {/* Filter Dropdowns */}
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="px-3 py-2 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] bg-[#F5F8FC]/50 focus:bg-white focus:border-[#13B8A6] focus:outline-none transition-all cursor-pointer"
+            >
+              <option value="">All Risk Tiers</option>
+              <option value="Low Risk">Low Risk (&lt; 20%)</option>
+              <option value="Moderate Risk">Moderate Risk (20-49%)</option>
+              <option value="High Risk">High Risk (&ge; 50%)</option>
+            </select>
+
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              className="px-3 py-2 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] bg-[#F5F8FC]/50 focus:bg-white focus:border-[#13B8A6] focus:outline-none transition-all cursor-pointer"
+            >
+              <option value="">All Biological Sex</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          {/* Records Counter */}
+          <div className="text-[11px] text-[#627487] font-medium flex items-center justify-between px-1">
+            <span>Filtering: <strong className="text-[#0B1F33]">{filteredReports.length}</strong> of {reports.length} records</span>
+          </div>
+
+          {/* Patient Scroll List */}
+          <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+            {loading ? (
+              <div className="text-center py-12">
+                <LoadingSpinner size="md" message="Loading records..." />
+              </div>
+            ) : filteredReports.length === 0 ? (
+              <EmptyState
+                title="No Matching Records"
+                message="Adjust filters or search keywords to view records."
+              />
+            ) : (
+              filteredReports.map((report, index) => {
+                const patientData = report.visitId?.patientData || {};
+                const riskScore = report.prediction?.risk_probability 
+                  ? Math.round(report.prediction.risk_probability * 100) 
+                  : 0;
+                const isSelected = selectedReport?._id === report._id;
+
+                return (
+                  <div
+                    key={report._id}
+                    onClick={() => setSelectedReport(report)}
+                    className={`flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'border-[#13B8A6] bg-teal-50/50 shadow-sm' 
+                        : 'border-[#E0E8F0] hover:border-teal-200 hover:bg-[#F5F8FC]/70'
+                    }`}
+                  >
+                    {/* Avatar Badge */}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0B1F33] to-[#123B5D] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                      {getInitials(index)}
+                    </div>
+
+                    {/* Patient Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h4 className="font-bold text-xs text-[#0B1F33] truncate">
+                          Patient {report.patientId}
+                        </h4>
+                        <span className="text-[10px] font-mono text-[#627487]">
+                          {report._id?.slice(-6).toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#627487]">
+                        {patientData.age || '—'}y • {patientData.gender === 1 ? 'Male' : patientData.gender === 0 ? 'Female' : '—'} • {patientData.ap_hi || '—'}/{patientData.ap_lo || '—'} mmHg
+                      </p>
+                    </div>
+
+                    {/* Risk Badge */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getRiskBadgeClass(report.prediction?.risk_category)}`}>
+                        {report.prediction?.risk_category?.split(' ')[0] || 'N/A'}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-[#0B1F33]">
+                        {riskScore}%
+                      </span>
+                    </div>
+
+                    <ChevronRight 
+                      size={16} 
+                      className={`shrink-0 ${isSelected ? 'text-[#13B8A6]' : 'text-slate-300'}`} 
+                    />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Selected Patient Record Detail */}
+        <div className="lg:col-span-7">
           {selectedReport ? (
-            <div className="lg:w-1/2 w-full">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                {/* Close button for mobile */}
-                <button
-                  onClick={() => setSelectedReport(null)}
-                  className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
+            <div className="bg-white rounded-3xl border border-[#E0E8F0] shadow-sm p-6 sm:p-8 space-y-6">
+              
+              {/* Detail Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-[#E0E8F0]">
+                <div>
+                  <span className="text-[11px] font-bold text-[#627487] uppercase tracking-wider block">
+                    Longitudinal Case Record
+                  </span>
+                  <h2 className="text-xl font-bold font-display text-[#0B1F33]">
+                    {selectedReport.patientId} Overview
+                  </h2>
+                </div>
 
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
-                  Patient Details
-                </h2>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getRiskBadgeClass(selectedReport.prediction?.risk_category)}`}>
+                    {selectedReport.prediction?.risk_category || 'N/A'}
+                  </span>
+                </div>
+              </div>
 
-                {/* Patient Info Section */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                      Basic Information
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InfoField label="Patient ID" value={selectedReport.patientId} />
-                      <InfoField 
-                        label="Age" 
-                        value={`${selectedReport.visitId?.patientData?.age || 'N/A'} years`} 
-                      />
-                      <InfoField 
-                        label="Gender" 
-                        value={selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : selectedReport.visitId?.patientData?.gender === 0 ? 'Female' : 'N/A'} 
-                      />
-                      <InfoField 
-                        label="Height" 
-                        value={`${selectedReport.visitId?.patientData?.height || 'N/A'} cm`} 
-                      />
-                      <InfoField 
-                        label="Weight" 
-                        value={`${selectedReport.visitId?.patientData?.weight || 'N/A'} kg`} 
-                      />
-                      <InfoField 
-                        label="BMI" 
-                        value={
-                          selectedReport.visitId?.patientData?.height && selectedReport.visitId?.patientData?.weight
-                            ? ((selectedReport.visitId.patientData.weight / Math.pow(selectedReport.visitId.patientData.height / 100, 2)).toFixed(1))
-                            : 'N/A'
-                        } 
-                      />
-                    </div>
+              {/* Vitals Summary Grid */}
+              <div>
+                <h3 className="text-xs font-bold text-[#627487] uppercase tracking-wider mb-3">
+                  Clinical Metrics
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                    <span className="text-[10px] text-[#627487] block uppercase font-medium">Age & Sex</span>
+                    <span className="font-bold text-[#0B1F33]">
+                      {selectedReport.visitId?.patientData?.age || '—'}y • {selectedReport.visitId?.patientData?.gender === 1 ? 'Male' : 'Female'}
+                    </span>
                   </div>
 
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                      Vital Signs
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InfoField 
-                        label="Systolic BP" 
-                        value={`${selectedReport.visitId?.patientData?.ap_hi || 'N/A'} mmHg`} 
-                      />
-                      <InfoField 
-                        label="Diastolic BP" 
-                        value={`${selectedReport.visitId?.patientData?.ap_lo || 'N/A'} mmHg`} 
-                      />
-                      <InfoField 
-                        label="Cholesterol" 
-                        value={
-                          selectedReport.visitId?.patientData?.cholesterol === 1 
-                            ? 'Normal' 
-                            : selectedReport.visitId?.patientData?.cholesterol === 2 
-                            ? 'Above Normal' 
-                            : selectedReport.visitId?.patientData?.cholesterol === 3
-                            ? 'High'
-                            : 'N/A'
-                        } 
-                      />
-                      <InfoField 
-                        label="Glucose" 
-                        value={
-                          selectedReport.visitId?.patientData?.gluc === 1 
-                            ? 'Normal' 
-                            : selectedReport.visitId?.patientData?.gluc === 2 
-                            ? 'Above Normal' 
-                            : selectedReport.visitId?.patientData?.gluc === 3
-                            ? 'High'
-                            : 'N/A'
-                        } 
-                      />
-                    </div>
+                  <div className="p-3 rounded-xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                    <span className="text-[10px] text-[#627487] block uppercase font-medium">Blood Pressure</span>
+                    <span className="font-bold font-mono text-[#0B1F33]">
+                      {selectedReport.visitId?.patientData?.ap_hi || '—'} / {selectedReport.visitId?.patientData?.ap_lo || '—'} mmHg
+                    </span>
                   </div>
 
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                      Risk Assessment
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-700">Risk Category</span>
-                        <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${getRiskBadgeClass(selectedReport.prediction?.risk_category)}`}>
-                          {selectedReport.prediction?.risk_category || 'N/A'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-700">Risk Score</span>
-                        <span className="text-2xl font-bold text-gray-900">
-                          {selectedReport.prediction?.risk_probability 
-                            ? Math.round(selectedReport.prediction.risk_probability * 100) 
-                            : 0}%
-                        </span>
-                      </div>
-                    </div>
+                  <div className="p-3 rounded-xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                    <span className="text-[10px] text-[#627487] block uppercase font-medium">Height / Weight</span>
+                    <span className="font-bold text-[#0B1F33]">
+                      {selectedReport.visitId?.patientData?.height || '—'}cm / {selectedReport.visitId?.patientData?.weight || '—'}kg
+                    </span>
                   </div>
 
-                  {/* Top Risk Factors */}
-                  {selectedReport.prediction?.top_risk_factors?.length > 0 && (
-                    <div className="border-t pt-6">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                        Top Risk Factors (SHAP Analysis)
-                      </h3>
-                      <div className="space-y-2">
-                        {selectedReport.prediction.top_risk_factors.slice(0, 5).map((factor, idx) => (
-                          <div 
-                            key={idx} 
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                          >
-                            <span className="text-sm text-gray-700 capitalize">
-                              {factor.feature.replace(/_/g, ' ')}
-                            </span>
-                            <span className={`text-sm font-semibold ${
-                              factor.impact > 0 ? 'text-red-600' : 'text-green-600'
-                            }`}>
-                              {factor.impact > 0 ? '+' : ''}{factor.impact.toFixed(4)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* AI Recommendations */}
-                  {(() => {
-                    const recs = selectedReport.prediction?.recommendations ||
-                                 selectedReport.mlResponse?.recommendations || [];
-                    return recs.length > 0 ? (
-                      <div className="border-t pt-6">
-                        <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                          AI Recommendations
-                        </h3>
-                        <div className="space-y-3">
-                          {recs.slice(0, 4).map((rec, idx) => {
-                            const sevColors = {
-                              high: 'border-l-red-400 bg-red-50',
-                              moderate: 'border-l-yellow-400 bg-yellow-50',
-                              low: 'border-l-green-400 bg-green-50',
-                            };
-                            return (
-                              <div
-                                key={idx}
-                                className={`border-l-4 ${sevColors[rec.severity] || 'border-l-blue-400 bg-blue-50'} rounded-lg p-3`}
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-base">{rec.icon}</span>
-                                  <span className="text-sm font-semibold text-gray-900">{rec.title}</span>
-                                </div>
-                                <p className="text-xs text-gray-600 mb-2">{rec.description}</p>
-                                {rec.actions?.length > 0 && (
-                                  <ul className="space-y-1">
-                                    {rec.actions.slice(0, 3).map((a, i) => (
-                                      <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
-                                        <span className="text-cyan-600 mt-0.5">&#10003;</span>
-                                        <span>{a}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null;
-                  })()}
-
-                  {/* Action Buttons */}
-                  <div className="border-t pt-6 flex gap-3">
-                    <button
-                      onClick={() => {
-                        // Load full report into localStorage and navigate to Result tab
-                        const predictionPayload = {
-                          report: selectedReport,
-                          patientId: selectedReport.patientId || 'N/A',
-                          patientData: selectedReport.visitId?.patientData || {},
-                        };
-                        localStorage.setItem('latestPrediction', JSON.stringify(predictionPayload));
-                        if (setselectedtab) setselectedtab('result');
-                      }}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#0a3d62] hover:bg-[#083050] text-white rounded-lg font-semibold transition shadow-md"
-                    >
-                      <ChevronRight size={18} />
-                      View Full Report
-                    </button>
-                   
+                  <div className="p-3 rounded-xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                    <span className="text-[10px] text-[#627487] block uppercase font-medium">Calculated BMI</span>
+                    <span className="font-bold text-[#0B1F33]">
+                      {selectedReport.visitId?.patientData?.height && selectedReport.visitId?.patientData?.weight
+                        ? ((selectedReport.visitId.patientData.weight / Math.pow(selectedReport.visitId.patientData.height / 100, 2)).toFixed(1)) + ' kg/m²'
+                        : 'N/A'}
+                    </span>
                   </div>
                 </div>
               </div>
+
+              {/* Risk Stratification Breakdown */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0B1F33] to-[#123B5D] text-white flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-300 font-medium block">Machine Learning Probability</span>
+                  <div className="text-3xl font-extrabold font-display mt-0.5">
+                    {selectedReport.prediction?.risk_probability 
+                      ? Math.round(selectedReport.prediction.risk_probability * 100) 
+                      : 0}%
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs text-slate-300 font-medium block">Stratification Tier</span>
+                  <span className="text-base font-bold text-[#20D9C2]">
+                    {selectedReport.prediction?.risk_category || 'N/A'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Top SHAP Contributors */}
+              {selectedReport.prediction?.top_risk_factors?.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-[#627487] uppercase tracking-wider mb-2.5">
+                    Key TreeSHAP Attributions
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedReport.prediction.top_risk_factors.slice(0, 4).map((factor, idx) => (
+                      <div 
+                        key={idx} 
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F8FC] border border-[#E0E8F0] text-xs"
+                      >
+                        <span className="font-semibold text-[#0B1F33] capitalize">
+                          {factor.feature.replace(/_/g, ' ')}
+                        </span>
+                        <span className={`font-mono font-bold ${
+                          factor.impact > 0 ? 'text-[#D94F59]' : 'text-[#16866A]'
+                        }`}>
+                          {factor.impact > 0 ? '+' : ''}{factor.impact.toFixed(4)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Full Report Action */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    const predictionPayload = {
+                      report: selectedReport,
+                      patientId: selectedReport.patientId || 'N/A',
+                      patientData: selectedReport.visitId?.patientData || {},
+                    };
+                    localStorage.setItem('latestPrediction', JSON.stringify(predictionPayload));
+                    if (setselectedtab) setselectedtab('result');
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] rounded-xl font-bold text-xs shadow-md shadow-[#20D9C2]/20 hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>Open Full Interactive Report in Dashboard</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+
             </div>
           ) : (
-            <div className="hidden lg:flex lg:w-1/2 items-center justify-center">
-              <div className="text-center text-gray-400">
-                <p className="text-lg font-medium">Select a patient to view details</p>
-              </div>
+            <div className="bg-white rounded-3xl border border-[#E0E8F0] p-12 text-center text-[#627487] space-y-2">
+              <p className="text-sm font-semibold text-[#0B1F33]">No Patient Selected</p>
+              <p className="text-xs">Click on any patient record in the archive to preview vitals and SHAP attribution.</p>
             </div>
           )}
         </div>
+
       </div>
-    </main>
+
+    </div>
   );
 }
-
-// Helper Component
-const InfoField = ({ label, value }) => (
-  <div>
-    <p className="text-xs text-gray-500 mb-1">{label}</p>
-    <p className="text-sm font-semibold text-gray-900">{value}</p>
-  </div>
-);
 
 export default Records;

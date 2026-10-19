@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, Shield, Edit2, Lock } from "lucide-react";
+import { User, Shield, Edit2, Lock, ShieldCheck, Mail, Phone, Calendar, CheckCircle2, KeyRound, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../services/apiService";
 import { LoadingButton, PageLoading } from "../../components/Loading";
@@ -29,7 +29,7 @@ const Profile = () => {
 
   const getUserInitial = () => {
     if (user?.name) return user.name.charAt(0).toUpperCase();
-    return 'U';
+    return 'D';
   };
 
   const handleOpenEdit = () => {
@@ -60,8 +60,8 @@ const Profile = () => {
       if (response.success) {
         updateUser(response.user);
         setMessageType('success');
-        setSaveMessage('Profile updated successfully!');
-        setTimeout(() => { setOpenEditModal(false); setSaveMessage(''); }, 1500);
+        setSaveMessage('Clinical profile updated successfully!');
+        setTimeout(() => { setOpenEditModal(false); setSaveMessage(''); }, 1400);
       }
     } catch (err) {
       console.error('Profile update error:', err);
@@ -75,7 +75,7 @@ const Profile = () => {
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setMessageType('error');
-      setSaveMessage('Passwords do not match');
+      setSaveMessage('Entered passwords do not match');
       return;
     }
 
@@ -94,9 +94,9 @@ const Profile = () => {
       );
       if (response.success) {
         setMessageType('success');
-        setSaveMessage('Password changed successfully!');
+        setSaveMessage('Password credentials changed successfully!');
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        setTimeout(() => { setOpenPasswordModal(false); setSaveMessage(''); }, 1500);
+        setTimeout(() => { setOpenPasswordModal(false); setSaveMessage(''); }, 1400);
       }
     } catch (err) {
       console.error('Password change error:', err);
@@ -109,200 +109,239 @@ const Profile = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(dateStr).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const tabs = [
-    { id: 'contact', label: 'Contact Info', icon: User },
-    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'contact', label: 'Clinical Profile', icon: User },
+    { id: 'security', label: 'Security & Auth', icon: Shield },
   ];
 
   if (!user) {
-    return <PageLoading message="Loading profile..." />;
+    return <PageLoading message="Loading practitioner profile..." />;
   }
 
   return (
-    <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-8">
-      <div className="w-full max-w-6xl mx-auto">
-        {/* MAIN CARD */}
-        <div className="w-full bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 lg:p-12">
-          {/* HEADER */}
-          <div className="flex flex-col gap-6 md:gap-8 border-b border-gray-200 pb-6 md:pb-8 mb-6 md:mb-8">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-6">
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-[#2c5f7c] to-[#3d7a99] text-white flex items-center justify-center text-2xl md:text-3xl font-bold shadow-lg">
-                {getUserInitial()}
-              </div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      
+      {/* Profile Header Card */}
+      <div className="bg-gradient-to-r from-[#0B1F33] via-[#0E2A44] to-[#123B5D] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-white/10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#13B8A6]/15 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="text-center sm:text-left flex-1">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
-                  {user?.name || 'Doctor'}
-                </h2>
-                <p className="text-gray-600 mt-1 text-base md:text-lg break-all">
-                  {user?.email || ''}
-                </p>
-                <span className="inline-block mt-3 bg-blue-50 text-blue-700 px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-medium">
-                  Cardiology • Preventive Care • AI Analytics
+        <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] flex items-center justify-center text-3xl font-extrabold shadow-lg shadow-[#20D9C2]/20 font-display">
+              {getUserInitial()}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <h1 className="text-2xl font-bold font-display text-white">
+                  {user?.name || 'Dr. Practitioner'}
+                </h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#20D9C2]/20 text-[#20D9C2] border border-[#20D9C2]/30 uppercase">
+                  {user?.role || 'Clinician'}
                 </span>
               </div>
-            </div>
-
-            <div className="flex justify-center sm:justify-start">
-              <button 
-                onClick={handleOpenEdit}
-                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-semibold shadow-lg transition-all text-sm md:text-base"
-              >
-                <Edit2 size={18} />
-                Edit Profile
-              </button>
+              <p className="text-xs text-slate-300 font-mono">{user?.email}</p>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/10 text-[11px] text-slate-200">
+                <ShieldCheck size={13} className="text-[#20D9C2]" />
+                <span>Cardiovascular Risk Screening • Staff Attending</span>
+              </div>
             </div>
           </div>
 
-          {/* TABS */}
-          <div className="flex gap-2 border-b border-gray-200 mb-6 md:mb-8 overflow-x-auto">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 font-medium transition-all whitespace-nowrap text-sm md:text-base ${
-                    activeTab === tab.id
-                      ? 'text-cyan-600 border-b-2 border-cyan-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon size={18} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* TAB CONTENT */}
-          <div className="min-h-[400px]">
-            {/* Contact Info Tab */}
-            {activeTab === 'contact' && (
-              <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Contact Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
-                  <InfoField label="Full Name" value={user?.name || 'N/A'} />
-                  <InfoField label="Email Address" value={user?.email || 'N/A'} />
-                
-                  <InfoField 
-                    label="Gender" 
-                    value={user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'Not set'} 
-                  />
-                  <InfoField 
-                    label="Account Status" 
-                    value={
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        user?.isEmailVerified 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {user?.isEmailVerified ? '✓ Verified' : 'Not Verified'}
-                      </span>
-                    } 
-                  />
-                  <InfoField label="Member Since" value={formatDate(user?.createdAt)} />
-                </div>
-              </div>
-            )}
-
-            {/* Security Tab */}
-            {activeTab === 'security' && (
-              <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Security Settings</h3>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-                  <div className="flex items-start gap-4">
-                    <Shield className="text-blue-600 mt-1" size={24} />
-                    <div>
-                      <h4 className="font-semibold text-blue-900 mb-2">Account Security</h4>
-                      <p className="text-blue-700 text-sm">
-                        Keep your account secure by using a strong password.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md transition">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <Lock className="text-white" size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800">Password</h4>
-                      <p className="text-sm text-gray-600">Change your account password</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setOpenPasswordModal(true)}
-                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-medium transition"
-                  >
-                    Change Password
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={handleOpenEdit}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] rounded-xl font-bold text-xs shadow-md shadow-[#20D9C2]/20 hover:shadow-lg transition-all"
+          >
+            <Edit2 size={14} />
+            <span>Edit Profile</span>
+          </button>
         </div>
+      </div>
+
+      {/* Main Tabs Container */}
+      <div className="bg-white rounded-3xl border border-[#E0E8F0] shadow-sm overflow-hidden">
+        
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-[#E0E8F0] px-6 pt-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 px-4 font-semibold text-xs border-b-2 transition-all relative ${
+                  isActive 
+                    ? 'border-[#13B8A6] text-[#13B8A6]' 
+                    : 'border-transparent text-[#627487] hover:text-[#0B1F33]'
+                }`}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Content Body */}
+        <div className="p-6 sm:p-8 min-h-[350px]">
+          {activeTab === 'contact' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-[#0B1F33] uppercase tracking-wider mb-1">
+                  Practitioner Credentials
+                </h3>
+                <p className="text-xs text-[#627487]">
+                  Information on record for this authenticated clinical terminal.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Full Clinical Name</span>
+                  <span className="text-sm font-bold text-[#0B1F33]">{user?.name || 'N/A'}</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Email Identifier</span>
+                  <span className="text-sm font-bold font-mono text-[#0B1F33]">{user?.email || 'N/A'}</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Contact Phone</span>
+                  <span className="text-sm font-bold text-[#0B1F33]">{user?.phoneNumber || 'Not provided'}</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Gender</span>
+                  <span className="text-sm font-bold text-[#0B1F33]">
+                    {user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : 'Not specified'}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Verification Status</span>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    user?.isEmailVerified 
+                      ? 'bg-teal-50 text-[#16866A] border border-teal-200' 
+                      : 'bg-amber-50 text-[#D49A27] border border-amber-200'
+                  }`}>
+                    {user?.isEmailVerified ? '✓ Verified Practitioner' : 'Verification Pending'}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0]">
+                  <span className="text-[10px] text-[#627487] uppercase font-bold block mb-1">Active Since</span>
+                  <span className="text-sm font-bold text-[#0B1F33]">{formatDate(user?.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'security' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-[#0B1F33] uppercase tracking-wider mb-1">
+                  Access & Cryptographic Security
+                </h3>
+                <p className="text-xs text-[#627487]">
+                  Manage password authentication and session access credentials.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#F5F8FC] border border-[#E0E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#13B8A6]">
+                    <Lock size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#0B1F33]">Password Credentials</h4>
+                    <p className="text-[11px] text-[#627487]">Regular credential rotation protects sensitive patient data</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setOpenPasswordModal(true)}
+                  className="px-4 py-2 bg-[#0B1F33] hover:bg-[#123B5D] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Change Password
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Edit Profile Modal */}
       {openEditModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 relative">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-[#E0E8F0] p-6 sm:p-8 relative">
             <button
               onClick={() => setOpenEditModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition-colors"
             >
-              ×
+              <X size={20} />
             </button>
 
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</h2>
+            <h3 className="text-lg font-bold font-display text-[#0B1F33] mb-4">
+              Update Practitioner Profile
+            </h3>
 
             {saveMessage && (
               <Alert 
                 type={messageType} 
                 message={saveMessage} 
                 onClose={() => setSaveMessage('')}
-                className="mb-6"
+                className="mb-4"
               />
             )}
 
-            <div className="space-y-5">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Full Name</label>
                 <input
                   type="text"
                   name="name"
                   value={editData.name}
                   onChange={handleEditChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Enter your full name"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none"
+                  placeholder="Dr. Full Name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Email (Locked)</label>
                 <input
                   type="email"
                   value={user?.email || ''}
                   readOnly
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-slate-400 bg-slate-50 cursor-not-allowed font-mono"
                 />
               </div>
 
-            
+              <div>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Contact Number</label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={editData.phoneNumber}
+                  onChange={handleEditChange}
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none"
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Gender</label>
                 <select
                   name="gender"
                   value={editData.gender}
                   onChange={handleEditChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none bg-white cursor-pointer"
                 >
                   <option value="">Select Gender</option>
                   <option value="male">Male</option>
@@ -312,19 +351,19 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-[#E0E8F0]">
               <button
                 onClick={() => setOpenEditModal(false)}
-                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+                className="px-4 py-2 border border-[#E0E8F0] rounded-xl text-xs font-semibold text-[#627487] hover:bg-slate-50"
               >
                 Cancel
               </button>
               <LoadingButton
                 onClick={handleSaveProfile}
                 loading={saveLoading}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-medium transition"
+                className="px-5 py-2 bg-gradient-to-r from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] rounded-xl font-bold text-xs shadow-md"
               >
-                Save Changes
+                Save Details
               </LoadingButton>
             </div>
           </div>
@@ -333,108 +372,95 @@ const Profile = () => {
 
       {/* Change Password Modal */}
       {openPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 relative">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-[#E0E8F0] p-6 sm:p-8 relative">
             <button
               onClick={() => {
                 setOpenPasswordModal(false);
                 setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                 setSaveMessage('');
               }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition-colors"
             >
-              ×
+              <X size={20} />
             </button>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Lock className="text-white" size={24} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800">Change Password</h2>
-            </div>
+            <h3 className="text-lg font-bold font-display text-[#0B1F33] mb-4">
+              Update Security Password
+            </h3>
 
             {saveMessage && (
               <Alert 
                 type={messageType} 
                 message={saveMessage} 
                 onClose={() => setSaveMessage('')}
-                className="mb-6"
+                className="mb-4"
               />
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Current Password</label>
                 <input
                   type="password"
                   name="currentPassword"
                   value={passwordData.currentPassword}
                   onChange={handlePasswordChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter current password"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none"
+                  placeholder="••••••••"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">New Password (8+ characters)</label>
                 <input
                   type="password"
                   name="newPassword"
                   value={passwordData.newPassword}
                   onChange={handlePasswordChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Enter new password"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none"
+                  placeholder="••••••••"
                 />
-                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <label className="block font-semibold text-[#172B3A] mb-1 uppercase tracking-wider">Confirm New Password</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   value={passwordData.confirmPassword}
                   onChange={handlePasswordChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Confirm new password"
+                  className="w-full px-3.5 py-2.5 border border-[#E0E8F0] rounded-xl text-xs text-[#172B3A] focus:border-[#13B8A6] focus:outline-none"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-[#E0E8F0]">
               <button
                 onClick={() => {
                   setOpenPasswordModal(false);
                   setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   setSaveMessage('');
                 }}
-                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+                className="px-4 py-2 border border-[#E0E8F0] rounded-xl text-xs font-semibold text-[#627487] hover:bg-slate-50"
               >
                 Cancel
               </button>
               <LoadingButton
                 onClick={handleChangePassword}
                 loading={passwordLoading}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg font-medium transition"
+                className="px-5 py-2 bg-gradient-to-r from-[#13B8A6] to-[#20D9C2] text-[#0B1F33] rounded-xl font-bold text-xs shadow-md"
               >
-                Change Password
+                Save New Password
               </LoadingButton>
             </div>
           </div>
         </div>
       )}
-    </main>
+
+    </div>
   );
 };
 
-
-// Helper Components
-const InfoField = ({ label, value }) => (
-  <div>
-    <p className="text-sm text-gray-500 mb-2 font-medium">{label}</p>
-    <p className="text-base font-semibold text-gray-800">{value}</p>
-  </div>
-);
-
 export default Profile;
-
