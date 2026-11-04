@@ -7,10 +7,16 @@ const createTransporter = () => {
   const emailPassword = getEmailPassword();
   const hasEmailCredentials = Boolean(emailUser && emailPassword);
 
+  const port = Number(process.env.EMAIL_PORT || 587);
+  const secure = port === 465;
+
   const transportConfig = {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: Number(process.env.EMAIL_PORT || 587),
-    secure: process.env.NODE_ENV === 'production',
+    port,
+    secure,
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 4000,
   };
 
   if (hasEmailCredentials) {

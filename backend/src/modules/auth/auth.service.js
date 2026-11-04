@@ -21,7 +21,10 @@ const registerUser = async (userData) => {
 
   logger.info('User registration attempt', { email, name });
 
-  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true';
+  const emailUser = process.env.EMAIL_USER;
+  const emailPassword = process.env.EMAIL_PASSWORD;
+  const hasSmtp = Boolean(emailUser && emailPassword);
+  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -61,17 +64,17 @@ const registerUser = async (userData) => {
       const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
       console.log(`\n[CardioShield] Verification Link: ${verificationUrl}\n`);
       
-      try {
-        await sendEmail({
-          to: email,
-          subject: 'Verify Your CardioShield AI Account',
-          html: emailVerificationTemplate(name, verificationUrl),
+      sendEmail({
+        to: email,
+        subject: 'Verify Your CardioShield AI Account',
+        html: emailVerificationTemplate(name, verificationUrl),
+      })
+        .then(() => {
+          logger.logAuth('resend-verification', existingUser._id, true, { email });
+        })
+        .catch((err) => {
+          logger.warn('Email could not be sent in background', { error: err.message });
         });
-      } catch (err) {
-        logger.warn('Email could not be sent (SMTP not configured or failed)', { error: err.message });
-      }
-
-      logger.logAuth('resend-verification', existingUser._id, true, { email });
 
       return {
         success: true,
@@ -118,30 +121,21 @@ const registerUser = async (userData) => {
     };
   }
   
-  try {
-    await sendEmail({
-      to: email,
-      subject: 'Verify Your CardioShield AI Account',
-      html: emailVerificationTemplate(name, verificationUrl),
+  sendEmail({
+    to: email,
+    subject: 'Verify Your CardioShield AI Account',
+    html: emailVerificationTemplate(name, verificationUrl),
+  })
+    .then(() => {
+      logger.logAuth('register', user._id, true, { email });
+    })
+    .catch((error) => {
+      logger.warn('Verification email sending in background failed', {
+        userId: user._id,
+        email,
+        error: error.message,
+      });
     });
-    
-    logger.logAuth('register', user._id, true, { email });
-  } catch (error) {
-    logger.error('Failed to send verification email', {
-      userId: user._id,
-      email,
-      error: error.message,
-    });
-
-    // Do NOT delete the created user on mail failure to avoid data loss.
-    // Return a success-like response indicating email delivery is pending.
-    return {
-      success: true,
-      message:
-        'Registration created. Verification email could not be sent immediately — it will be retried. Please check your inbox or request a resend.',
-      userId: user._id,
-    };
-  }
 
   return {
     success: true,
