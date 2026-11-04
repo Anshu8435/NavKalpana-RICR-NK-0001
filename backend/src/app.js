@@ -55,8 +55,14 @@ const corsOptions = {
     // In development: allow any localhost/127.0.0.1 port (5173, 5174, 3000, etc.)
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
     const isRenderApp = /^https:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin);
+    const isVercelApp = /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin);
 
-    if (allowed.includes(origin) || (process.env.NODE_ENV !== 'production' && isLocalhost) || isRenderApp) {
+    if (
+      allowed.includes(origin) ||
+      (process.env.NODE_ENV !== 'production' && isLocalhost) ||
+      isRenderApp ||
+      isVercelApp
+    ) {
       return callback(null, true);
     }
 
