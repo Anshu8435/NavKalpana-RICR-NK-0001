@@ -96,6 +96,8 @@ function Signup() {
           alert(result.data.message || 'Registration successful! Please check your email to verify your account.');
           navigate('/login');
         }
+      } else {
+        setError(result.message || 'Registration failed. Please try again.');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
