@@ -5,6 +5,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import connectDB from './config/database.js';
 import logger from './config/logger.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
@@ -13,6 +16,10 @@ import requestLogger from './middleware/requestLogger.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import { verifyTransporter } from './config/email.js';
 import predictionRoutes from './modules/prediction/prediction.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDist = path.join(__dirname, '../../frontend/dist');
 
 const app = express();
 
@@ -23,7 +30,12 @@ if (process.env.NODE_ENV === 'production') {
 
 connectDB();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(mongoSanitize());
 
 // CORS configuration supporting dynamic origins, local development ports, and deployed apps
@@ -100,16 +112,27 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/predictions', predictionRoutes);
 
+// Static frontend delivery & SPA client-side fallback
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
 
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to CardioShield AI API',
-    version: '1.0.0',
-    description: 'Early Cardiovascular Risk Stratification Platform',
-    documentation: '/api/docs',
+  app.get('*', (req, res, next) => {
+    if (req.originalUrl.startsWith('/api') || req.originalUrl === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
-});
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Welcome to CardioShield AI API',
+      version: '1.0.0',
+      description: 'Early Cardiovascular Risk Stratification Platform',
+      documentation: '/api/docs',
+    });
+  });
+}
 
 app.use(notFound);
 
