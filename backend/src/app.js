@@ -26,19 +26,42 @@ connectDB();
 app.use(helmet());
 app.use(mongoSanitize());
 
-// CORS - support multiple origins via comma-separated ALLOWED_ORIGINS env var
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : [process.env.FRONTEND_URL || 'http://localhost:5173'];
+// CORS configuration supporting dynamic origins, local development ports, and deployed apps
+const getAllowedOrigins = () => {
+  const origins = [];
+
+  if (process.env.ALLOWED_ORIGINS) {
+    origins.push(...process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()));
+  }
+
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL.trim());
+  }
+
+  origins.push('http://localhost:5173', 'http://127.0.0.1:5173');
+
+  return [...new Set(origins.filter(Boolean))];
+};
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, health checks)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (!origin) {
+      return callback(null, true);
     }
+
+    const allowed = getAllowedOrigins();
+
+    // In development: allow any localhost/127.0.0.1 port (5173, 5174, 3000, etc.)
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const isRenderApp = /^https:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin);
+
+    if (allowed.includes(origin) || (process.env.NODE_ENV !== 'production' && isLocalhost) || isRenderApp) {
+      return callback(null, true);
+    }
+
+    logger.warn('CORS request blocked', { origin, allowedOrigins: allowed });
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   optionsSuccessStatus: 200,
