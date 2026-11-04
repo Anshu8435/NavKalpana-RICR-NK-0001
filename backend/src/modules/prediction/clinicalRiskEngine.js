@@ -182,3 +182,4 @@ export const calculateClinicalRisk = (patientData) => {
 };
 
 export default calculateClinicalRisk;
+
