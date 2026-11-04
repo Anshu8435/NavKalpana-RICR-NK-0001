@@ -86,7 +86,11 @@ function ResetPassword() {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+      if (!err.response) {
+        setError('Cannot connect to the server. Please ensure the backend is running on port 5000.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+      }
     } finally {
       setLoading(false);
     }

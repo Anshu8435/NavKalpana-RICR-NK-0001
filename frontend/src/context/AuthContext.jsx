@@ -24,8 +24,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
     if (!token) {
       setLoading(false);
@@ -62,10 +61,13 @@ export const AuthProvider = ({ children }) => {
         return { success: true, user };
       }
     } catch (error) {
+      const message = !error.response
+        ? 'Cannot connect to the server. Please verify the backend is running on port 5000.'
+        : (error.response?.data?.message || 'Login failed');
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed',
-        error: error.response?.data
+        message,
+        error: error.response?.data,
       };
     }
   };
@@ -75,10 +77,13 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/register', { name, email, password });
       return { success: true, data: response.data };
     } catch (error) {
+      const message = !error.response
+        ? 'Cannot connect to the server. Please verify the backend is running on port 5000.'
+        : (error.response?.data?.message || 'Registration failed');
       return {
         success: false,
-        message: error.response?.data?.message || 'Registration failed',
-        error: error.response?.data
+        message,
+        error: error.response?.data,
       };
     }
   };
@@ -86,6 +91,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);
     navigate('/login');

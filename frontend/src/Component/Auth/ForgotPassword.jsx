@@ -39,7 +39,11 @@ function ForgotPassword() {
       setSuccess(true);
       setEmail('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send reset link. Please try again.');
+      if (!err.response) {
+        setError('Cannot connect to the server. Please ensure the backend is running on port 5000.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to send reset link. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
