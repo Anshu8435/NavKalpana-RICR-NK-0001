@@ -160,6 +160,15 @@ CardioShield AI API running in ${NODE_ENV} mode on port ${PORT}
   });
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`Port ${PORT} is already in use by another process. Please close it or choose another PORT.`);
+  } else {
+    logger.error('Server error occurred', { message: err.message, stack: err.stack });
+  }
+  process.exit(1);
+});
+
 // Verify email transporter asynchronously at startup (non-blocking)
 verifyTransporter().then((ok) => {
   if (!ok) {
