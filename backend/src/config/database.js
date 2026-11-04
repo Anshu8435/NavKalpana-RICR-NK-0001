@@ -1,13 +1,23 @@
+import dns from 'dns';
 import mongoose from 'mongoose';
 import logger from './logger.js';
 import { getMongoUri } from './env.js';
+
+// Use public DNS resolvers for reliable MongoDB Atlas SRV lookup in cloud containers
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch {
+  // Ignore if custom DNS cannot be configured in the current environment
+}
 
 const connectDB = async () => {
   try {
     logger.info('Attempting to connect to MongoDB...');
     
     const mongoUri = getMongoUri();
-    const conn = await mongoose.connect(mongoUri);
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+    });
 
     logger.info('MongoDB connected successfully', {
       host: conn.connection.host,

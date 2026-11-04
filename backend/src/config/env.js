@@ -1,8 +1,12 @@
 const resolveEnv = (names, fallback = undefined) => {
   for (const name of names) {
-    const value = process.env[name];
+    let value = process.env[name];
     if (typeof value === 'string' && value.trim() !== '') {
-      return value.trim();
+      value = value.trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1).trim();
+      }
+      return value;
     }
   }
 
