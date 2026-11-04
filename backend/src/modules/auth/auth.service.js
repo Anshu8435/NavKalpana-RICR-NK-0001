@@ -21,10 +21,8 @@ const registerUser = async (userData) => {
 
   logger.info('User registration attempt', { email, name });
 
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
-  const hasSmtp = Boolean(emailUser && emailPassword);
-  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
+  const shouldRequireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+  const shouldSkipVerification = !shouldRequireVerification;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -211,10 +209,8 @@ const loginUser = async (email, password) => {
     throw new ErrorResponse('Invalid email or password', 401);
   }
 
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
-  const hasSmtp = Boolean(emailUser && emailPassword);
-  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
+  const shouldRequireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+  const shouldSkipVerification = !shouldRequireVerification;
 
   if (!user.isEmailVerified) {
     if (shouldSkipVerification) {
@@ -295,10 +291,8 @@ const resendVerificationEmail = async (email) => {
 
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
   
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
-  const hasSmtp = Boolean(emailUser && emailPassword);
-  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
+  const shouldRequireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+  const shouldSkipVerification = !shouldRequireVerification;
 
   if (shouldSkipVerification) {
     user.isEmailVerified = true;
