@@ -211,9 +211,22 @@ const loginUser = async (email, password) => {
     throw new ErrorResponse('Invalid email or password', 401);
   }
 
+  const emailUser = process.env.EMAIL_USER;
+  const emailPassword = process.env.EMAIL_PASSWORD;
+  const hasSmtp = Boolean(emailUser && emailPassword);
+  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
+
   if (!user.isEmailVerified) {
-    logger.warn('Login failed - Email not verified', { email, userId: user._id });
-    throw new ErrorResponse('Please verify your email before logging in', 403);
+    if (shouldSkipVerification) {
+      user.isEmailVerified = true;
+      user.verificationToken = undefined;
+      user.verificationTokenExpires = undefined;
+      await user.save();
+      logger.info('Auto-verified unverified user on login', { email: user.email });
+    } else {
+      logger.warn('Login failed - Email not verified', { email, userId: user._id });
+      throw new ErrorResponse('Please verify your email before logging in', 403);
+    }
   }
 
   if (!user.isActive) {
@@ -282,22 +295,37 @@ const resendVerificationEmail = async (email) => {
 
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
   
-  try {
-    await sendEmail({
-      to: email,
-      subject: 'Verify Your CardioShield AI Account',
-      html: emailVerificationTemplate(user.name, verificationUrl),
-    });
-    
-    logger.info('Verification email resent successfully', { email, userId: user._id });
-  } catch (error) {
-    logger.error('Failed to resend verification email', { email, userId: user._id, error: error.message });
-    throw new ErrorResponse('Failed to send verification email. Please try again later.', 500);
+  const emailUser = process.env.EMAIL_USER;
+  const emailPassword = process.env.EMAIL_PASSWORD;
+  const hasSmtp = Boolean(emailUser && emailPassword);
+  const shouldSkipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true' || !hasSmtp;
+
+  if (shouldSkipVerification) {
+    user.isEmailVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+    return {
+      success: true,
+      message: 'Account verified successfully! You can now log in.',
+    };
   }
+
+  sendEmail({
+    to: email,
+    subject: 'Verify Your CardioShield AI Account',
+    html: emailVerificationTemplate(user.name, verificationUrl),
+  })
+    .then(() => {
+      logger.info('Verification email resent successfully', { email, userId: user._id });
+    })
+    .catch((error) => {
+      logger.warn('Failed to resend verification email in background', { email, userId: user._id, error: error.message });
+    });
 
   return {
     success: true,
-    message: 'Verification email sent successfully',
+    message: 'Verification email sent successfully. Please check your inbox.',
   };
 };
 
