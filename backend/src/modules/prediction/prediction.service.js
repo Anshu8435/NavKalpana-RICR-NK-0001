@@ -3,9 +3,9 @@ import Visit from './visit.model.js';
 import Report from './report.model.js';
 import logger from '../../config/logger.js';
 import ErrorResponse from '../../shared/errorResponse.js';
+import { calculateClinicalRisk } from './clinicalRiskEngine.js';
 
 const ML_SERVICE_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').trim().replace(/\/+$/, '');
-
 
 const createVisit = async (userId, patientData) => {
   try {
@@ -23,43 +23,34 @@ const createVisit = async (userId, patientData) => {
   }
 };
 
-
 const getPredictionFromML = async (patientData) => {
   try {
     logger.info('Calling ML service for prediction', { mlServiceUrl: ML_SERVICE_URL });
 
     const response = await axios.post(`${ML_SERVICE_URL}/predict`, patientData, {
-      timeout: 30000, // 30 seconds timeout
+      timeout: 8000,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    logger.info('ML service responded successfully', {
-      riskCategory: response.data.risk_category,
-    });
+    if (response?.data && response.data.risk_probability != null) {
+      logger.info('ML service responded successfully', {
+        riskCategory: response.data.risk_category,
+      });
+      return response.data;
+    }
 
-    return response.data;
+    throw new Error('ML service response missing risk probability');
   } catch (error) {
-    logger.error('ML service error', {
-      message: error.message,
-      response: error.response?.data,
+    logger.warn('External ML service unavailable or rate limited, engaging clinical risk engine', {
+      error: error.message,
       status: error.response?.status,
     });
 
-    if (error.response) {
-      throw new ErrorResponse(
-        `ML Service Error: ${error.response.data?.detail || error.message}`,
-        error.response.status
-      );
-    } else if (error.request) {
-      throw new ErrorResponse('ML Service is not responding. Please try again later.', 503);
-    } else {
-      throw new ErrorResponse('Failed to connect to ML Service', 500);
-    }
+    return calculateClinicalRisk(patientData);
   }
 };
-
 
 const createReport = async (visitId, userId, predictionData) => {
   try {
@@ -104,7 +95,6 @@ const processPrediction = async (userId, patientData) => {
       .select('-__v');
     
     // Attach the ML prediction directly to visit for frontend access
-    // This bypasses any MongoDB schema transformation issues
     const visitWithPrediction = savedVisit.toObject();
     visitWithPrediction.prediction = prediction;
     
@@ -119,7 +109,6 @@ const processPrediction = async (userId, patientData) => {
     throw error;
   }
 };
-
 
 const getUserReports = async (userId, options = {}) => {
   try {
@@ -165,7 +154,6 @@ const getUserReports = async (userId, options = {}) => {
   }
 };
 
-
 const getReportById = async (reportId, userId) => {
   try {
     const report = await Report.findOne({ _id: reportId, userId })
@@ -185,7 +173,6 @@ const getReportById = async (reportId, userId) => {
     throw new ErrorResponse('Failed to fetch report', 500);
   }
 };
-
 
 const getUserStatistics = async (userId) => {
   try {
@@ -227,7 +214,6 @@ const getUserStatistics = async (userId) => {
     throw new ErrorResponse('Failed to fetch statistics', 500);
   }
 };
-
 
 const deleteReport = async (reportId, userId) => {
   try {

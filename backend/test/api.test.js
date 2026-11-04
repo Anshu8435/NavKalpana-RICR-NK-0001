@@ -109,4 +109,26 @@ test('API Test Suite - Health, Routing, CORS, and Security Contracts', async (t)
     assert.ok(apiRes.headers.get('ratelimit-remaining'), 'ratelimit-remaining header should be present');
   });
 
+  await t.test('TC08: Clinical fallback engine computes cardiovascular risk without ML service errors', async () => {
+    const { calculateClinicalRisk } = await import('../src/modules/prediction/clinicalRiskEngine.js');
+    const result = calculateClinicalRisk({
+      age: 52,
+      height: 168,
+      weight: 74,
+      gender: 1,
+      ap_hi: 135,
+      ap_lo: 88,
+      cholesterol: 2,
+      gluc: 1,
+      smoke: 1,
+      alco: 0,
+      active: 1,
+    });
+    assert.ok(result.risk_probability >= 0 && result.risk_probability <= 1, 'Probability must be valid');
+    assert.ok(['Low Risk', 'Moderate Risk', 'High Risk'].includes(result.risk_category), 'Valid risk category');
+    assert.strictEqual(result.confidence_interval.length, 2, 'Confidence interval must have 2 elements');
+    assert.ok(Array.isArray(result.top_risk_factors), 'Top risk factors should be an array');
+    assert.ok(Array.isArray(result.recommendations), 'Recommendations should be an array');
+  });
+
 });
