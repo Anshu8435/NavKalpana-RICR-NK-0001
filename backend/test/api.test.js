@@ -95,4 +95,18 @@ test('API Test Suite - Health, Routing, CORS, and Security Contracts', async (t)
     assert.strictEqual(res.status, 401);
   });
 
+  await t.test('TC07: Rate limit headers are present and track client IP with generous limits', async () => {
+    const apiRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': '203.0.113.195',
+      },
+      body: JSON.stringify({ email: 'test_rl@hospital.org', password: 'Password123!' }),
+    });
+    assert.strictEqual(apiRes.status, 401);
+    assert.ok(apiRes.headers.get('ratelimit-limit'), 'ratelimit-limit header should be present');
+    assert.ok(apiRes.headers.get('ratelimit-remaining'), 'ratelimit-remaining header should be present');
+  });
+
 });

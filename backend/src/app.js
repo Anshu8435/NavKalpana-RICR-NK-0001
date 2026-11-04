@@ -23,10 +23,8 @@ const frontendDist = path.join(__dirname, '../../frontend/dist');
 
 const app = express();
 
-// Trust proxy - required for Render/Heroku (reverse proxy) so rate limiter & req.ip work correctly
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-}
+// Trust proxy - required for Render/Heroku/Cloudflare reverse proxies so rate limiter & req.ip work correctly
+app.set('trust proxy', true);
 
 connectDB();
 
