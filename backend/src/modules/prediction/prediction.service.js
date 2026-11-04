@@ -4,7 +4,7 @@ import Report from './report.model.js';
 import logger from '../../config/logger.js';
 import ErrorResponse from '../../shared/errorResponse.js';
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_SERVICE_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').trim().replace(/\/+$/, '');
 
 
 const createVisit = async (userId, patientData) => {

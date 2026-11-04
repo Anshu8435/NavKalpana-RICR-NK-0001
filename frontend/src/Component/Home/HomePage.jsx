@@ -20,31 +20,18 @@ import {
 function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [selectedtab, setselectedtab] = useState(() => {
-    return searchParams.get('tab') || 'dashboard';
-  });
+  const selectedtab = searchParams.get('tab') || 'dashboard';
+  const setselectedtab = (tab) => {
+    setSearchParams({ tab }, { replace: true });
+  };
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sync: when selectedtab state changes, update the URL to match
-  useEffect(() => {
-    const currentTab = searchParams.get('tab');
-    if (currentTab !== selectedtab) {
-      setSearchParams({ tab: selectedtab }, { replace: true });
-    }
-  }, [selectedtab]);
-
-  // Sync: when URL changes (browser back/forward, navigate()), update state to match
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
-      return;
     }
-    const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl && tabFromUrl !== selectedtab) {
-      setselectedtab(tabFromUrl);
-    }
-  }, [searchParams, navigate]);
+  }, [navigate]);
 
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },

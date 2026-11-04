@@ -20,7 +20,7 @@ import {
   ArrowRight
 } from "lucide-react";
 
-function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
+function Records({ searchQuery = '', setselectedtab }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
@@ -140,7 +140,7 @@ function Records({ searchQuery = '', setSearchQuery, setselectedtab }) {
     doc.text(`Total Longitudinal Records: ${filteredReports.length}`, 20, y);
 
     y += 15;
-    filteredReports.forEach((report, index) => {
+    filteredReports.forEach((report) => {
       if (y > 270) {
         doc.addPage();
         y = 20;

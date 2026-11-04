@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import { 
   Activity, 
@@ -24,19 +24,15 @@ import {
 } from "lucide-react";
 
 function Result({ setselectedtab }) {
-  const [predictionData, setPredictionData] = useState(null);
-
-  useEffect(() => {
-    const storedPrediction = localStorage.getItem('latestPrediction');
-    if (storedPrediction) {
-      try {
-        const parsed = JSON.parse(storedPrediction);
-        setPredictionData(parsed);
-      } catch (err) {
-        console.error('Error parsing stored prediction:', err);
-      }
+  const [predictionData] = useState(() => {
+    try {
+      const storedPrediction = localStorage.getItem('latestPrediction');
+      return storedPrediction ? JSON.parse(storedPrediction) : null;
+    } catch (err) {
+      console.error('Error parsing stored prediction:', err);
+      return null;
     }
-  }, []);
+  });
 
   const getRiskProbability = () => {
     if (!predictionData) return null;
@@ -71,12 +67,6 @@ function Result({ setselectedtab }) {
                         [];
   
   const patientId = predictionData?.patientId || 'N/A';
-  const reportId = predictionData?.report?._id || predictionData?.visit?._id || 'N/A';
-  const recommendation = predictionData?.visit?.prediction?.recommendation || 
-                        predictionData?.prediction?.recommendation ||
-                        predictionData?.report?.prediction?.recommendation ||
-                        predictionData?.report?.mlResponse?.recommendation || '';
-
   const recommendations = predictionData?.visit?.prediction?.recommendations ||
                           predictionData?.prediction?.recommendations ||
                           predictionData?.report?.prediction?.recommendations ||
@@ -92,10 +82,6 @@ function Result({ setselectedtab }) {
                    predictionData?.report?.prediction?.referral ||
                    predictionData?.report?.mlResponse?.referral || null;
 
-  const shapContributions = predictionData?.visit?.prediction?.shap_contributions ||
-                            predictionData?.prediction?.shap_contributions ||
-                            predictionData?.report?.prediction?.shap_contributions ||
-                            predictionData?.report?.mlResponse?.shap_contributions || {};
 
   const riskLabel = riskCategory;
 

@@ -141,7 +141,7 @@ export const deleteReport = async (req, res, next) => {
  */
 export const testMLService = async (req, res, next) => {
   try {
-    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+    const mlServiceUrl = (process.env.ML_SERVICE_URL || 'http://localhost:8000').trim().replace(/\/+$/, '');
 
     logger.info('Testing ML service connection', { mlServiceUrl });
 

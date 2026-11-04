@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { predictionService } from "../../services/apiService";
 import { useAuth } from "../../context/AuthContext";
 import { LoadingSpinner } from "../../components/Loading";
@@ -21,7 +20,6 @@ import {
 } from "lucide-react";
 
 function Front({ setselectedtab }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);

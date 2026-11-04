@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authService } from '../../services/apiService';
 import { LoadingButton } from '../../components/Loading';
 import { Alert } from '../../components/Alert';
 import { Mail, Activity, ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 
 function ForgotPassword() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
 import { useAuth } from "../../context/AuthContext";
 
-function Header({ selectedtab, setselectedtab }) {
-  const navigate = useNavigate();
+function Header() {
   const { user, logout } = useAuth();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -38,7 +36,7 @@ function Header({ selectedtab, setselectedtab }) {
      <header className="h-[75px] bg-gradient-to-r from-[#0a3d62] to-[#3c6382] text-white flex items-center justify-between px-6 lg:px-10 shadow-xl border-b-4 border-white/30">
         
         <div className="flex items-center gap-4">
-          <img src="logo.png" alt="Logo" className="w-9 h-9 object-contain" />
+          <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain" />
           <h3 className="text-xl lg:text-2xl font-bold tracking-wide">
             CardioShield AI
           </h3>

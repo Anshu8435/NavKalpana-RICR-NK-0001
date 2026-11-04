@@ -147,27 +147,32 @@ app.use(errorHandler);
 
 // Server configuration
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-const server = app.listen(PORT, () => {
-  console.log(`
-CardioShield AI API running in ${NODE_ENV} mode on port ${PORT}
-  `);
-  logger.info('Server started successfully', {
-    port: PORT,
-    environment: NODE_ENV,
-    nodeVersion: process.version,
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, HOST, () => {
+    console.log(`
+CardioShield AI API running in ${NODE_ENV} mode on http://${HOST}:${PORT}
+    `);
+    logger.info('Server started successfully', {
+      port: PORT,
+      host: HOST,
+      environment: NODE_ENV,
+      nodeVersion: process.version,
+    });
   });
-});
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    logger.error(`Port ${PORT} is already in use by another process. Please close it or choose another PORT.`);
-  } else {
-    logger.error('Server error occurred', { message: err.message, stack: err.stack });
-  }
-  process.exit(1);
-});
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is already in use by another process. Please close it or choose another PORT.`);
+    } else {
+      logger.error('Server error occurred', { message: err.message, stack: err.stack });
+    }
+    process.exit(1);
+  });
+}
 
 // Verify email transporter asynchronously at startup (non-blocking)
 verifyTransporter().then((ok) => {

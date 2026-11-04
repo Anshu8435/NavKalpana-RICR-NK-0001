@@ -1,0 +1,69 @@
+name: CI - Production Readiness & Quality Gates
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  frontend-checks:
+    name: Frontend Lint & Production Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: ESLint Code Quality Gate
+        run: npm run lint
+
+      - name: Vite Production Build
+        run: npm run build
+
+  backend-checks:
+    name: Backend Contract & Integration Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        run: npm ci
+
+      - name: Run API Contract & Integration Tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          PORT: 5000
+          HOST: 0.0.0.0
+          MONGO_URI: mongodb://127.0.0.1:27017/cardioshield_ci_test
+          JWT_SECRET: ci_secret_dev_key_test_12345
+          SKIP_EMAIL_VERIFICATION: "true"

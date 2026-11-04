@@ -1,0 +1,34 @@
+services:
+  # CardioShield AI - Backend API (Node.js Express)
+  - type: web
+    name: cardioshield-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: FRONTEND_URL
+        value: https://nav-kalpana-ricr-nk-0001.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: https://nav-kalpana-ricr-nk-0001.vercel.app,https://nav-kalpana-ricr-nk-0001-git-main-anshu8435s-projects.vercel.app
+      - key: SKIP_EMAIL_VERIFICATION
+        value: "true"
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ML_SERVICE_URL
+        value: http://localhost:8000
+

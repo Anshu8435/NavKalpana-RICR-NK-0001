@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Search, LogOut, Sparkles, Activity, ShieldCheck, User } from "lucide-react";
 
-function Header({ setselectedtab, searchQuery, setSearchQuery, selectedtab }) {
-  const navigate = useNavigate();
+function Header({ setselectedtab, setSearchQuery }) {
   const { user, logout } = useAuth();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
