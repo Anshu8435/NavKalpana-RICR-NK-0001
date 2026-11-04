@@ -5,9 +5,24 @@ const isProductionDomain =
   window.location.hostname !== 'localhost' &&
   window.location.hostname !== '127.0.0.1';
 
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  (isProductionDomain ? '/api' : 'http://localhost:5000/api');
+const resolveApiBase = () => {
+  let url = import.meta.env.VITE_API_URL;
+  if (url && typeof url === 'string' && url.trim() !== '') {
+    url = url.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+    if (!url.endsWith('/api')) {
+      url = `${url}/api`;
+    }
+    return url;
+  }
+  return isProductionDomain
+    ? 'https://cardioshield-backend.onrender.com/api'
+    : 'http://localhost:5000/api';
+};
+
+const API_BASE = resolveApiBase();
 
 export const api = axios.create({
   baseURL: API_BASE,

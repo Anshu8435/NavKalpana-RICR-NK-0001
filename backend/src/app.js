@@ -108,16 +108,23 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes
+// API Routes (support both /api prefixed routes and direct aliases)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/predictions', predictionRoutes);
 
 // Static frontend delivery & SPA client-side fallback
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
 
   app.get('*', (req, res, next) => {
-    if (req.originalUrl.startsWith('/api') || req.originalUrl === '/health') {
+    if (
+      req.originalUrl.startsWith('/api') ||
+      req.originalUrl.startsWith('/auth') ||
+      req.originalUrl.startsWith('/predictions') ||
+      req.originalUrl === '/health'
+    ) {
       return next();
     }
     res.sendFile(path.join(frontendDist, 'index.html'));
